@@ -12,11 +12,14 @@ public slots:
     //add public functions here
 
     void init();
-
+    std::string listDirs(std::string path);
+    std::string listFiles(std::string path);
+    std::string listFilesPriv(std::string path, bool dirs);
 private:
     void setOs(std::string os);
 
     std::string os;
+    std::string springHome;
 };
 
 #endif // LOBBYINTERFACE_H

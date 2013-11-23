@@ -15,6 +15,8 @@ SOURCES += main.cpp \
     weblobbywindow.cpp \
     lobbyinterface.cpp
 
+LIBS += -lboost_filesystem -lboost_system
+
 # Please do not modify the following two lines. Required for deployment.
 include(html5applicationviewer/html5applicationviewer.pri)
 qtcAddDeployment()
