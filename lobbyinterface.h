@@ -15,6 +15,9 @@ public slots:
     std::string listDirs(std::string path);
     std::string listFiles(std::string path);
     std::string listFilesPriv(std::string path, bool dirs);
+
+    std::string getSpringHome();
+    void setSpringHome(std::string path);
 private:
     void setOs(std::string os);
 

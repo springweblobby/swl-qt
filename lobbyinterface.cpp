@@ -50,6 +50,15 @@ void LobbyInterface::setOs(std::string os) {
     f.mkdirs();*/
 }
 
+std::string LobbyInterface::getSpringHome() {
+    return springHome;
+}
+
+// Should be called prior to init() to take effect.
+void LobbyInterface::setSpringHome(std::string path) {
+    springHome = path;
+}
+
 /*
 public boolean connect(final String url, final int p) {
     return javaSocketBridge.connect(url, p);
@@ -196,14 +205,6 @@ private void setOs(String os) {
     f.mkdirs();
 }
 
-public String getSpringHome() {
-    return this.springHome;
-}
-
-// Should be called prior to init() to take effect.
-public void setSpringHome(final String path) {
-    this.springHome = path;
-}
 
 public void createDir(final String path) {
     File f = new File( path );
