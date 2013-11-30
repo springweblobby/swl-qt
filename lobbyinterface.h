@@ -12,14 +12,17 @@ public slots:
     //add public functions here
 
     void init();
-    std::string listDirs(std::string path);
-    std::string listFiles(std::string path);
-    std::string listFilesPriv(std::string path, bool dirs);
+    QString listDirs(QString path);
+    QString listFiles(QString path);
+    QString readFileLess(QString path, unsigned int lines);
 
-    std::string getSpringHome();
-    void setSpringHome(std::string path);
+    bool downloadFile(QString source, QString target);
+
+    QString getSpringHome();
+    void setSpringHome(QString path);
 private:
     void setOs(std::string os);
+    QString listFilesPriv(QString path, bool dirs);
 
     std::string os;
     std::string springHome;

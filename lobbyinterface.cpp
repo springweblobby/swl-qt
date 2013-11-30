@@ -1,6 +1,8 @@
 #include "lobbyinterface.h"
 #include <QSysInfo>
 #include <boost/filesystem.hpp>
+#include <fstream>
+#include <deque>
 namespace fs = boost::filesystem;
 
 LobbyInterface::LobbyInterface(QObject *parent) :
@@ -50,13 +52,13 @@ void LobbyInterface::setOs(std::string os) {
     f.mkdirs();*/
 }
 
-std::string LobbyInterface::getSpringHome() {
-    return springHome;
+QString LobbyInterface::getSpringHome() {
+    return QString::fromStdString(springHome);
 }
 
 // Should be called prior to init() to take effect.
-void LobbyInterface::setSpringHome(std::string path) {
-    springHome = path;
+void LobbyInterface::setSpringHome(QString path) {
+    springHome = path.toStdString();
 }
 
 /*
@@ -74,16 +76,17 @@ public boolean send(String message)
     return this.javaSocketBridge.send(message);
 }*/
 
-std::string LobbyInterface::listDirs(std::string path) {
+QString LobbyInterface::listDirs(QString path) {
     return listFilesPriv(path, true);
 }
 
-std::string LobbyInterface::listFiles(std::string path) {
+QString LobbyInterface::listFiles(QString path) {
     return listFilesPriv(path, false);
 }
 
-std::string LobbyInterface::listFilesPriv(std::string path, bool dirs) {
+QString LobbyInterface::listFilesPriv(QString qpath, bool dirs) {
     std::list<std::string> files;
+    std::string path = qpath.toStdString();
     fs::path folder(path);
 
     if (fs::exists(path) && fs::is_directory(folder)) {
@@ -106,8 +109,68 @@ std::string LobbyInterface::listFilesPriv(std::string path, bool dirs) {
         }
     }
 
-    return out;
+    return QString::fromStdString(out);
 }
+
+QString LobbyInterface::readFileLess(QString path, unsigned int lines) {
+    std::ifstream in(path.toStdString().c_str());
+    if (!in) {
+        //TODO: log("readFileLess(): Could not open file.");
+        return "";
+    }
+    std::deque<std::string> q;
+    while (in.good()) {
+        if (q.size() > lines)
+            q.pop_front();
+        std::string s;
+        std::getline(in, s);
+        q.push_back(std::move(s));
+    }
+    QString res;
+    for (auto l : q)
+        res += (l + "\n").c_str();
+    return res;
+}
+
+bool LobbyInterface::downloadFile(QString source, QString target) {
+    return true;
+    // TODO
+    /*try {
+        System.out.println("Copy file: " + source + " > " + target );
+        URLConnection dl = new URL( source ).openConnection();
+        dl.setUseCaches(false);
+
+        File f = new File(target);
+        dl.setIfModifiedSince( f.lastModified() );
+
+        if (dl.getContentLength() <= 0) {
+            System.out.println("File not modified, using cache");
+            return true;
+        }
+
+        ReadableByteChannel rbc = Channels.newChannel(dl.getInputStream());
+
+        FileOutputStream fos = new FileOutputStream(target);
+        fos.getChannel().transferFrom(rbc, 0, 1 << 24);
+        //System.out.println(fos.getChannel().size());
+        fos.close();
+        rbc.close();
+
+        if (target.endsWith("pr-downloader")) {
+            CLibrary libc = (CLibrary) Native.loadLibrary("c", CLibrary.class); //breaks applet on windows
+            //Path targetFile = Paths.get(target); // fails on Linux
+            //Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwxr-x---");
+            //Files.setPosixFilePermissions(targetFile, perms);
+
+            libc.chmod(target, 0750);
+        }
+
+    } catch (Exception e)	{
+        e.printStackTrace();
+    }
+    return true;*/
+}
+
 /*
 public void createScript(String scriptFile, String script)
 {
@@ -353,32 +416,6 @@ public boolean WriteToFile(final String logFile, final String line) {
     return true;
 }
 
-public String ReadFileLess(final String logFile, final int numLines) {
-    try {
-        File f = new File(logFile);
-        if(!f.exists()) {
-            return "";
-        }
-        String lessOut = "";
-        Stack<String> lessOutList = new Stack<String>();
-        BufferedReader br = null;
-        br = new BufferedReader(new FileReader(logFile));
-        String curLine;
-
-        while ((curLine = br.readLine()) != null) {
-            lessOutList.push(curLine);
-        }
-
-        for (int i=1; i <= numLines && !lessOutList.empty() ; i++) {
-            lessOut = lessOutList.pop() + "\n" + lessOut;
-        }
-        return lessOut;
-    } catch(Exception e) {
-        e.printStackTrace();
-        return "";
-    }
-}
-
 
 public String ReadFileMore(final String logFile, final int numLines) {
     try {
@@ -426,48 +463,6 @@ public void doJs(String jscmd)
     } catch (Exception e) {
         e.printStackTrace();
     }
-}
-
-public boolean downloadFile(final String source, final String target) {
-    downloadFilePriv(source, target);
-    return true;
-}
-
-public boolean downloadFilePriv(String source, String target) {
-    try {
-        System.out.println("Copy file: " + source + " > " + target );
-        URLConnection dl = new URL( source ).openConnection();
-        dl.setUseCaches(false);
-
-        File f = new File(target);
-        dl.setIfModifiedSince( f.lastModified() );
-
-        if (dl.getContentLength() <= 0) {
-            System.out.println("File not modified, using cache");
-            return true;
-        }
-
-        ReadableByteChannel rbc = Channels.newChannel(dl.getInputStream());
-
-        FileOutputStream fos = new FileOutputStream(target);
-        fos.getChannel().transferFrom(rbc, 0, 1 << 24);
-        //System.out.println(fos.getChannel().size());
-        fos.close();
-        rbc.close();
-
-        if (target.endsWith("pr-downloader")) {
-            CLibrary libc = (CLibrary) Native.loadLibrary("c", CLibrary.class); //breaks applet on windows
-            //Path targetFile = Paths.get(target); // fails on Linux
-            //Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwxr-x---");
-            //Files.setPosixFilePermissions(targetFile, perms);
-
-            libc.chmod(target, 0750);
-        }
-
-    } catch (Exception e)	{
-        e.printStackTrace();
-    }
-    return true;
 }
 
 interface CLibrary extends Library {
