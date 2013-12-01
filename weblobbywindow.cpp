@@ -12,8 +12,8 @@ void MyPage::javaScriptConsoleMessage(const QString& message, int lineNumber,
 WebLobbyWindow::WebLobbyWindow(QWidget *parent) : QMainWindow(parent) {
     resize(1280, 800);
     progress = 0;
+    lobbyInterface = NULL;
 
-    lobbyInterface = new LobbyInterface();
     QNetworkProxyFactory::setUseSystemConfiguration(true);
 
     view = new QWebView(this);
@@ -26,6 +26,7 @@ WebLobbyWindow::WebLobbyWindow(QWidget *parent) : QMainWindow(parent) {
     connect(view, SIGNAL(loadFinished(bool)), SLOT(finishLoading(bool)));
 
     view->load(QUrl("http://weblobby.springrts.com/desktop/index.html"));
+    //view->load(QUrl("file:///home/user/dev/swl-qtcpp/site/index.html"));
     connect(view->page()->mainFrame(), SIGNAL(javaScriptWindowObjectCleared()),
             this, SLOT(addJSObject()));
 
@@ -64,6 +65,10 @@ void WebLobbyWindow::finishLoading(bool) {
 }
 
 void WebLobbyWindow::addJSObject() {
-    view->page()->mainFrame()->addToJavaScriptWindowObject("QWeblobbyApplet",
-                                                           lobbyInterface);
+    // Create a new LobbyInterface every time a page loads. This is done so
+    // that reloading the page doesn't drag over the old state.
+    if(lobbyInterface)
+        delete lobbyInterface;
+    lobbyInterface = new LobbyInterface(this, view->page()->mainFrame());
+    view->page()->mainFrame()->addToJavaScriptWindowObject("QWeblobbyApplet", lobbyInterface);
 }

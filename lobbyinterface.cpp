@@ -1,12 +1,15 @@
 #include "lobbyinterface.h"
 #include <QSysInfo>
+#include <QWebFrame>
+#include <QNetworkInterface>
 #include <boost/filesystem.hpp>
+#include <boost/crc.hpp>
 #include <fstream>
 #include <deque>
 namespace fs = boost::filesystem;
 
-LobbyInterface::LobbyInterface(QObject *parent) :
-    QObject(parent), springHome("") {
+LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
+    QObject(parent), springHome(""), network(this), frame(frame) {
 }
 
 void LobbyInterface::init() {
@@ -61,20 +64,27 @@ void LobbyInterface::setSpringHome(QString path) {
     springHome = path.toStdString();
 }
 
-/*
-public boolean connect(final String url, final int p) {
-    return javaSocketBridge.connect(url, p);
+void LobbyInterface::connect(QString host, unsigned int port) {
+    network.connect(host.toStdString(), port);
 }
 
-//FIXME: was renamed from disconnect to disconnectBridge
-public boolean disconnectBridge()
-{
-    return this.javaSocketBridge.disconnect();
+void LobbyInterface::disconnect() {
+    network.disconnect();
 }
-public boolean send(String message)
-{
-    return this.javaSocketBridge.send(message);
-}*/
+
+void LobbyInterface::send(QString msg) {
+    network.send(msg.toStdString());
+}
+
+bool LobbyInterface::event(QEvent* evt) {
+    if(evt->type() == NetworkHandler::ReadEvent::TypeId) {
+        auto readEvt = dynamic_cast<NetworkHandler::ReadEvent&>(*evt);
+        evalJs("on_socket_get('" + escapeJs(readEvt.msg) + "')");
+        return true;
+    } else {
+        return QObject::event(evt);
+    }
+}
 
 QString LobbyInterface::listDirs(QString path) {
     return listFilesPriv(path, true);
@@ -402,22 +412,15 @@ private void WriteToLogFile(Exception e) {
         e.printStackTrace();
     }
 
-}
+}*/
 
-public boolean WriteToFile(final String logFile, final String line) {
-    try	{
-        PrintWriter out = new PrintWriter(new FileWriter(logFile, true));
-        out.println(line);
-        out.close();
-    } catch(Exception e) {
-        e.printStackTrace();
-        return false;
-    }
-    return true;
+void LobbyInterface::writeToFile(QString path, QString line) {
+    std::ofstream out(path.toStdString(), std::ios_base::app);
+    out << line.toStdString() << std::endl;
 }
 
 
-public String ReadFileMore(final String logFile, final int numLines) {
+/*public String ReadFileMore(final String logFile, final int numLines) {
     try {
         File f = new File(logFile);
         if (!f.exists()) {
@@ -442,32 +445,22 @@ public String ReadFileMore(final String logFile, final int numLines) {
         //echoJs( "Problem reading from log file ("+logFile+"): " + e.toString() );
         return "";
     }
+}*/
+
+void LobbyInterface::evalJs(const std::string& code) {
+    frame->evaluateJavaScript(QString::fromStdString("__java_js_wrapper(function(){" + code + "}, this);"));
 }
 
-
-public void echoJs(String out)	{
-    System.out.println(out);
-    out = jsFix(out);
-}
-
-public void doJs(String jscmd)
-{
-    final String evalJS = "__java_js_wrapper(function(){" + jscmd + "}, this);";
-    try {
-        QApplication.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                browser.page().mainFrame().evaluateJavaScript(evalJS + "; null");
-            }
-        });
-    } catch (Exception e) {
-        e.printStackTrace();
+std::string LobbyInterface::escapeJs(const std::string& str) {
+    std::string res = "";
+    for(char c : str) {
+        if(c == '\'') res += "\\'";
+        else if(c == '"') res += "\\\"";
+        else res += c;
     }
+    return res;
 }
-
-interface CLibrary extends Library {
-    public int chmod(String path, int mode);
-}
+/*
 
 private DatagramSocket dsocket;
 public int sendSomePacket(final String host, final int port, final String messageString ) {
@@ -535,12 +528,25 @@ public String getMacAddress() {
 
     return "";
 
-}
+}*/
 
-public long getUserID() {
-    String mac = getMacAddress() + "lobby.springrts.com";
+long LobbyInterface::getUserID() {
+    for(auto i : QNetworkInterface::allInterfaces()) {
+        if((i.flags() & QNetworkInterface::IsUp) &&
+                (i.flags() & QNetworkInterface::IsRunning) &&
+                !(i.flags() & QNetworkInterface::IsLoopBack) &&
+                !i.hardwareAddress().startsWith("00:00:00:00")) { // hax
+            std::string str = i.hardwareAddress().toStdString() + "lobby.springrts.com";
+            boost::crc_32_type crc;
+            // Do we include '\0'? Does it matter?
+            crc.process_bytes(str.c_str(), str.size());
+            return crc.checksum();
+        }
+    }
+    return 0;
+    /*String mac = getMacAddress() + "lobby.springrts.com";
 
     CRC32 crc32 = new CRC32();
     crc32.update( mac.getBytes() );
-    return crc32.getValue();
-}*/
+    return crc32.getValue();*/
+}

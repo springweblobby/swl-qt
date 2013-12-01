@@ -14,9 +14,10 @@ CONFIG += c++11
 # The .cpp file which was generated for your project. Feel free to hack it.
 SOURCES += main.cpp \
     weblobbywindow.cpp \
-    lobbyinterface.cpp
+    lobbyinterface.cpp \
+    networkhandler.cpp
 
-LIBS += -lboost_filesystem -lboost_system
+LIBS += -lboost_filesystem -lboost_system -lboost_thread
 
 # Please do not modify the following two lines. Required for deployment.
 include(html5applicationviewer/html5applicationviewer.pri)
