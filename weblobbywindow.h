@@ -13,6 +13,8 @@ class QWebView;
 class LobbyInterface;
 
 class MyPage : public QWebPage {
+public:
+    MyPage(QObject* parent) : QWebPage(parent) {}
 protected:
     void javaScriptConsoleMessage(const QString& message, int lineNumber,
                                   const QString& sourceID);

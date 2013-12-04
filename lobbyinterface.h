@@ -63,7 +63,6 @@ public slots:
     QString getSpringHome();
     void setSpringHome(QString path);
 private:
-    void setOs(std::string os);
     QString listFilesPriv(QString path, bool dirs);
     void evalJs(const std::string&);
     std::string escapeJs(const std::string&);

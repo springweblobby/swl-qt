@@ -17,16 +17,21 @@ WebLobbyWindow::WebLobbyWindow(QWidget *parent) : QMainWindow(parent) {
     QNetworkProxyFactory::setUseSystemConfiguration(true);
 
     view = new QWebView(this);
-    view->setPage(new MyPage());
+    view->setPage(new MyPage(view));
     setCentralWidget(view);
     setUnifiedTitleAndToolBarOnMac(true);
+
+    QWebSettings* settings = view->page()->settings();
+    settings->setAttribute(QWebSettings::LocalStorageEnabled, true);
+    settings->setAttribute(QWebSettings::LocalContentCanAccessFileUrls, true);
+    settings->setAttribute(QWebSettings::LocalContentCanAccessRemoteUrls, true);
 
     connect(view, SIGNAL(titleChanged(QString)), SLOT(adjustTitle()));
     connect(view, SIGNAL(loadProgress(int)), SLOT(setProgress(int)));
     connect(view, SIGNAL(loadFinished(bool)), SLOT(finishLoading(bool)));
 
-    view->load(QUrl("http://weblobby.springrts.com/desktop/index.html"));
-    //view->load(QUrl("file:///home/user/dev/swl-qtcpp/site/index.html"));
+    //view->load(QUrl("http://weblobby.springrts.com/desktop/index.html"));
+    view->load(QUrl("file:///home/user/dev/swl-qtcpp/site/index.html"));
     connect(view->page()->mainFrame(), SIGNAL(javaScriptWindowObjectCleared()),
             this, SLOT(addJSObject()));
 

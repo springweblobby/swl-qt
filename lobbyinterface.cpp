@@ -1,7 +1,9 @@
 #include "lobbyinterface.h"
 #include <QSysInfo>
 #include <QWebFrame>
+#include <QWebPage>
 #include <QNetworkInterface>
+#include <QStandardPaths>
 #include <boost/filesystem.hpp>
 #include <boost/crc.hpp>
 #include <fstream>
@@ -14,45 +16,34 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
 
 void LobbyInterface::init() {
     #ifdef Q_OS_LINUX
-        setOs("Linux");
+        os = "Linux";
     #elif Q_OS_MSDOS
-        setOs("Windows");
+        os = "Windows";
     #elif Q_OS_MAC
-        setOS("Mac");
+        os = "Mac";
     #endif
-}
 
-void LobbyInterface::setOs(std::string os) {
-    this->os = os;
-    /* TODO: convert following code into C++
-    File f;
-    this.slash = os.equals("Windows") ? "\\" : "/";
-    if	(springHome != "") {
-
-    } else if( os.equals("Windows")) {
-        springHome = System.getProperty("user.home") + "\\Documents\\My Games\\Spring";
-    } else if( os.equals("Mac") || os.equals("Linux")) {
-        springHome = System.getProperty("user.home") + "/.spring";
+    if (springHome != "");
+    else if (os == "Windows") {
+        // This calls SHGetFolderPath(... CSIDL_PERSONAL ...), same as what Spring uses.
+        springHome = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation).toStdString() +
+            "\\My Games\\Spring";
     } else {
-        return;
-    }
-    f = new File( springHome );
-    f.mkdirs();
-
-    if (!f.isDirectory()) {
-        System.err.println("alert('Cannot access spring home folder " + jsFix(springHome) + "\nApparently, automatic detection has failed. Please set the correct one in settings.');");
+        // ~/.spring
+        springHome = QStandardPaths::writableLocation(QStandardPaths::HomeLocation).toStdString() +
+            "/.spring";
     }
 
-    String weblobbyHome = springHome + this.slash + "weblobby";
-
-    f = new File( weblobbyHome + this.slash + "engine" );
-    f.mkdirs();
-
-    f = new File( weblobbyHome + this.slash + "pr-downloader" );
-    f.mkdirs();
-
-    f = new File( weblobbyHome + this.slash + "logs" );
-    f.mkdirs();*/
+    try {
+        const char slash = (os == "Windows" ? '\\' : '/');
+        const std::string weblobbyDir = springHome + slash + "weblobby" + slash;
+        fs::create_directories({ weblobbyDir + "engine" });
+        fs::create_directories({ weblobbyDir + "pr-downloader" });
+        fs::create_directories({ weblobbyDir + "logs" });
+        frame->page()->settings()->setLocalStoragePath(QString::fromStdString(weblobbyDir + "storage"));
+    } catch(fs::filesystem_error e) {
+        // TODO
+    }
 }
 
 QString LobbyInterface::getSpringHome() {
@@ -456,6 +447,8 @@ std::string LobbyInterface::escapeJs(const std::string& str) {
     for(char c : str) {
         if(c == '\'') res += "\\'";
         else if(c == '"') res += "\\\"";
+        else if(c == '\n') res += "\\n";
+        else if(c == '\r') res += "\\r";
         else res += c;
     }
     return res;
