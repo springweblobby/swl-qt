@@ -90,7 +90,12 @@ bool LobbyInterface::event(QEvent* evt) {
 }
 
 void LobbyInterface::jsMessage(std::string source, int lineNumber, std::string message) {
-    logger.debug(source, ":", lineNumber, " ", message);
+    if (message.find("<TASSERVER>") == std::string::npos &&
+        message.find("<LOCAL>") == std::string::npos) {
+        logger.debug(source, ":", lineNumber, " ", message);
+    } else {
+        logger.debug(message);
+    }
 }
 
 QString LobbyInterface::listDirs(QString path) {
