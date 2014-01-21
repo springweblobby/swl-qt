@@ -6,7 +6,8 @@
 
 void MyPage::javaScriptConsoleMessage(const QString& message, int lineNumber,
                                       const QString& sourceID) {
-    qDebug() << sourceID << ":" << lineNumber << " " << message;
+    if (*lobbyInterface)
+        (*lobbyInterface)->jsMessage(sourceID.toStdString(), lineNumber, message.toStdString());
 }
 
 WebLobbyWindow::WebLobbyWindow(QWidget *parent) : QMainWindow(parent) {
@@ -17,7 +18,7 @@ WebLobbyWindow::WebLobbyWindow(QWidget *parent) : QMainWindow(parent) {
     QNetworkProxyFactory::setUseSystemConfiguration(true);
 
     view = new QWebView(this);
-    view->setPage(new MyPage(view));
+    view->setPage(new MyPage(view, &lobbyInterface)); // dat hax
     setCentralWidget(view);
     setUnifiedTitleAndToolBarOnMac(true);
 
@@ -72,7 +73,7 @@ void WebLobbyWindow::finishLoading(bool) {
 void WebLobbyWindow::addJSObject() {
     // Create a new LobbyInterface every time a page loads. This is done so
     // that reloading the page doesn't drag over the old state.
-    if(lobbyInterface)
+    if (lobbyInterface)
         delete lobbyInterface;
     lobbyInterface = new LobbyInterface(this, view->page()->mainFrame());
     view->page()->mainFrame()->addToJavaScriptWindowObject("QWeblobbyApplet", lobbyInterface);

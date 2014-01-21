@@ -25,4 +25,5 @@ qtcAddDeployment()
 
 HEADERS += \
     weblobbywindow.h \
-    lobbyinterface.h
+    lobbyinterface.h \
+    logger.h

@@ -1,4 +1,6 @@
 #include "lobbyinterface.h"
+#include "logger.h"
+#include <QCoreApplication>
 #include <QSysInfo>
 #include <QWebFrame>
 #include <QWebPage>
@@ -11,7 +13,10 @@
 namespace fs = boost::filesystem;
 
 LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
-    QObject(parent), springHome(""), network(this), frame(frame) {
+        QObject(parent), springHome(""), network(this, logger), frame(frame) {
+    logger.setEventReceiver(this);
+    auto args = QCoreApplication::arguments();
+    logger.setDebug(args.contains("-debug"));
 }
 
 void LobbyInterface::init() {
@@ -33,6 +38,7 @@ void LobbyInterface::init() {
         springHome = QStandardPaths::writableLocation(QStandardPaths::HomeLocation).toStdString() +
             "/.spring";
     }
+    logger.info("springHome is ", springHome);
 
     try {
         const char slash = (os == "Windows" ? '\\' : '/');
@@ -41,8 +47,9 @@ void LobbyInterface::init() {
         fs::create_directories({ weblobbyDir + "pr-downloader" });
         fs::create_directories({ weblobbyDir + "logs" });
         frame->page()->settings()->setLocalStoragePath(QString::fromStdString(weblobbyDir + "storage"));
+        logger.setLogFile(weblobbyDir + slash + "weblobby.log");
     } catch(fs::filesystem_error e) {
-        // TODO
+        logger.error("Creating folders failed with: ", e.what());
     }
 }
 
@@ -68,13 +75,22 @@ void LobbyInterface::send(QString msg) {
 }
 
 bool LobbyInterface::event(QEvent* evt) {
-    if(evt->type() == NetworkHandler::ReadEvent::TypeId) {
+    if (evt->type() == NetworkHandler::ReadEvent::TypeId) {
         auto readEvt = dynamic_cast<NetworkHandler::ReadEvent&>(*evt);
         evalJs("on_socket_get('" + escapeJs(readEvt.msg) + "')");
+        return true;
+    } else if (evt->type() == Logger::LogEvent::TypeId) {
+        auto logEvt = dynamic_cast<Logger::LogEvent&>(*evt);
+        if(logEvt.lev == Logger::level::error)
+            evalJs("alert2('" + escapeJs(logEvt.msg) + "')");
         return true;
     } else {
         return QObject::event(evt);
     }
+}
+
+void LobbyInterface::jsMessage(std::string source, int lineNumber, std::string message) {
+    logger.debug(source, ":", lineNumber, " ", message);
 }
 
 QString LobbyInterface::listDirs(QString path) {
@@ -114,9 +130,10 @@ QString LobbyInterface::listFilesPriv(QString qpath, bool dirs) {
 }
 
 QString LobbyInterface::readFileLess(QString path, unsigned int lines) {
+    // TODO: deque? Just read the file in the reverse order, geez.
     std::ifstream in(path.toStdString().c_str());
     if (!in) {
-        //TODO: log("readFileLess(): Could not open file.");
+        logger.warning("readFileLess(): Could not open ", path.toStdString());
         return "";
     }
     std::deque<std::string> q;

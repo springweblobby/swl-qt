@@ -14,10 +14,11 @@ class LobbyInterface;
 
 class MyPage : public QWebPage {
 public:
-    MyPage(QObject* parent) : QWebPage(parent) {}
+    MyPage(QObject* parent, LobbyInterface** iface) : QWebPage(parent), lobbyInterface(iface) {}
 protected:
     void javaScriptConsoleMessage(const QString& message, int lineNumber,
                                   const QString& sourceID);
+    LobbyInterface** lobbyInterface; // double pointers ORLY?
 };
 
 class WebLobbyWindow : public QMainWindow {

@@ -5,11 +5,12 @@ namespace asio = boost::asio;
 namespace ip = asio::ip;
 
 void NetworkHandler::connect(std::string host, unsigned int port) {
+    logger.info("Connecting to uberserver on ", host, ":", port);
     try {
         auto it = resolver.resolve({ host, std::to_string(port) });
         socket.connect({ it->endpoint().address(), it->endpoint().port() });
     } catch(boost::system::system_error e) {
-        // TODO
+        logger.error("Could not connect to lobby server: ", e.what());
     }
     asio::async_read_until(socket, readBuf, '\n', boost::bind(&NetworkHandler::onRead, this, _1, _2));
 }
@@ -23,7 +24,7 @@ void NetworkHandler::onRead(const boost::system::error_code& ec, std::size_t byt
         QCoreApplication::postEvent(eventReceiver, new ReadEvent(msg));
         asio::async_read_until(socket, readBuf, '\n', boost::bind(&NetworkHandler::onRead, this, _1, _2));
     } else {
-        // TODO
+        logger.warning("Could not read data from uberserver"); // TODO ec -> text?
     }
 }
 
@@ -31,11 +32,12 @@ void NetworkHandler::send(std::string msg) {
     try {
         asio::write(socket, boost::asio::buffer(msg));
     } catch(boost::system::system_error e) {
-        // TODO
+        logger.warning("Could not send data to uberserver: ", e.what());
     }
 }
 
 void NetworkHandler::disconnect() {
+    logger.info("Disconnecting from uberserver.");
     socket.close();
 }
 
@@ -43,7 +45,8 @@ void NetworkHandler::runService() {
     service.run();
 }
 
-NetworkHandler::NetworkHandler(QObject* eventReceiver) : resolver(service), socket(service), eventReceiver(eventReceiver) {
+NetworkHandler::NetworkHandler(QObject* eventReceiver, Logger& logger) : resolver(service), socket(service),
+        eventReceiver(eventReceiver), logger(logger) {
     work = new asio::io_service::work(service);
     thread = boost::thread(boost::bind(&NetworkHandler::runService, this));
 }

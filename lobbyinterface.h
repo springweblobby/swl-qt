@@ -1,6 +1,7 @@
 #ifndef LOBBYINTERFACE_H
 #define LOBBYINTERFACE_H
 
+#include "logger.h"
 #include <QObject>
 #include <QEvent>
 #include <boost/asio.hpp>
@@ -14,7 +15,7 @@ public:
     void disconnect();
     void send(std::string msg);
 
-    NetworkHandler(QObject* eventReceiver);
+    NetworkHandler(QObject* eventReceiver, Logger& logger);
     ~NetworkHandler();
 
     // This event is posted to eventReceiver when some data arrives in the socket.
@@ -33,6 +34,7 @@ private:
     boost::asio::streambuf readBuf;
     boost::thread thread;
     QObject* eventReceiver;
+    Logger& logger;
 };
 
 class LobbyInterface : public QObject {
@@ -48,7 +50,8 @@ public slots:
     //add public functions here
 
     void init();
-    
+    void jsMessage(std::string source, int line, std::string msg);
+
     QString listDirs(QString path);
     QString listFiles(QString path);
     QString readFileLess(QString path, unsigned int lines);
@@ -69,6 +72,7 @@ private:
 
     std::string os;
     std::string springHome;
+    Logger logger;
     NetworkHandler network;
     QWebFrame* frame;
 };
