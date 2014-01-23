@@ -2,10 +2,12 @@
 #define LOBBYINTERFACE_H
 
 #include "logger.h"
+#include "unitsynchandler.h"
 #include <QObject>
 #include <QEvent>
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
+#include <map>
 
 class QWebFrame;
 
@@ -57,6 +59,8 @@ public slots:
     QString readFileLess(QString path, unsigned int lines);
     void writeToFile(QString path, QString line);
 
+    QObject* getUnitsync(QString path);
+
     void connect(QString host, unsigned int port);
     void disconnect();
     void send(QString msg);
@@ -75,6 +79,7 @@ private:
     Logger logger;
     NetworkHandler network;
     QWebFrame* frame;
+    std::map<std::string, UnitsyncHandler> unitsyncs;
 };
 
 #endif // LOBBYINTERFACE_H

@@ -22,10 +22,12 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
 void LobbyInterface::init() {
     #ifdef Q_OS_LINUX
         os = "Linux";
-    #elif Q_OS_MSDOS
+    #elif Q_OS_WIN32 // Defined on 64-bit Windows too.
         os = "Windows";
     #elif Q_OS_MAC
         os = "Mac";
+    #else
+        #error "Unknown target OS."
     #endif
 
     if (springHome != "");
@@ -92,7 +94,7 @@ bool LobbyInterface::event(QEvent* evt) {
 void LobbyInterface::jsMessage(std::string source, int lineNumber, std::string message) {
     if (message.find("<TASSERVER>") == std::string::npos &&
         message.find("<LOCAL>") == std::string::npos) {
-        logger.debug(source, ":", lineNumber, " ", message);
+        logger.warning(source, ":", lineNumber, " ", message);
     } else {
         logger.debug(message);
     }
@@ -194,27 +196,24 @@ bool LobbyInterface::downloadFile(QString source, QString target) {
     return true;*/
 }
 
+QObject* LobbyInterface::getUnitsync(QString qpath) {
+    std::string path = qpath.toStdString();
+    if (!unitsyncs.count(path)) {
+        unitsyncs.insert(std::make_pair(path, UnitsyncHandler(this, logger, path)));
+    }
+
+    if (unitsyncs.find(path)->second.isReady())
+        return &(unitsyncs.find(path)->second);
+    else {
+        logger.error("Unitsync not loaded at ", path);
+        return NULL;
+    }
+}
+
 /*
 public void createScript(String scriptFile, String script)
 {
     this.createScriptFile(scriptFile, script);
-}
-
-public UnitsyncImpl getUnitsync(final String unitsyncPath)
-{
-    //NativeLibrary.addSearchPath("unitsync", unitsyncPathFull);
-    //Preferences.userRoot().put("unitsync.path", "unitsync");
-    try
-    {
-        UnitsyncImpl unitsync = new UnitsyncImpl( unitsyncPath, this );
-        return unitsync;
-
-    }
-    catch (Exception e)
-    {
-        WriteToLogFile( e );
-    }
-    return null;
 }
 
 private int byteToInt(byte b)

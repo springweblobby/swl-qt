@@ -15,15 +15,17 @@ CONFIG += c++11
 SOURCES += main.cpp \
     weblobbywindow.cpp \
     lobbyinterface.cpp \
-    networkhandler.cpp
+    networkhandler.cpp \
+    unitsynchandler.cpp
 
 LIBS += -lboost_filesystem -lboost_system -lboost_thread
 
 # Please do not modify the following two lines. Required for deployment.
-include(html5applicationviewer/html5applicationviewer.pri)
-qtcAddDeployment()
+#include(html5applicationviewer/html5applicationviewer.pri)
+#qtcAddDeployment()
 
 HEADERS += \
     weblobbywindow.h \
     lobbyinterface.h \
-    logger.h
+    logger.h \
+    unitsynchandler.h
