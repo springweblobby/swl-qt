@@ -1,0 +1,12 @@
+name: wrapper-gen
+cabal-version: >=1.10
+version: 0.1
+build-type: Simple
+
+executable wrapper_gen
+    main-is: wrapper_gen.hs
+    build-depends:
+        base,
+        bytestring,
+        parsec
+    default-language: Haskell2010

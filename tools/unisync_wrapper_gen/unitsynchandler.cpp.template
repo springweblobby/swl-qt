@@ -1,0 +1,49 @@
+#include "unitsynchandler.h"
+#if defined Q_OS_LINUX || defined Q_OS_MAC
+    #include <dlfcn.h>
+#elif defined Q_OS_WIN32
+    #error "Not implemented yet."
+#else
+    #error "Unknown target OS."
+#endif
+
+UnitsyncHandler::UnitsyncHandler(QObject* parent, Logger& logger, std::string path) :
+        QObject(parent), logger(logger), ready(false), handle(NULL) {
+    logger.info("Loading unitsync at ", path);
+    #if defined Q_OS_LINUX || defined Q_OS_MAC
+        handle = dlopen(path.c_str(), RTLD_LAZY | RTLD_LOCAL);
+        if(handle == NULL) {
+            logger.error("Could not load unitsync at ", path, ": ", dlerror());
+            return;
+        }
+
+        ${fptr_initialization_unix}
+
+        ready = true;
+    #elif defined Q_OS_WIN32
+        #error "Not implemented yet."
+    #else
+        #error "Unknown target OS."
+    #endif
+}
+
+UnitsyncHandler::~UnitsyncHandler() {
+    #if defined Q_OS_LINUX || defined Q_OS_MAC
+        if (handle)
+            dlclose(handle);
+    #elif defined Q_OS_WIN32
+        #error "Not implemented yet."
+    #else
+        #error "Unknown target OS."
+    #endif
+}
+
+UnitsyncHandler::UnitsyncHandler(UnitsyncHandler&& h) : QObject(h.parent()),
+        logger(h.logger), ready(h.ready), handle(h.handle) {
+
+    h.handle = NULL; // Quite an important line, if you ask me.
+
+    ${move_ctor_assignment}
+}
+
+${public_methods_definitions}
