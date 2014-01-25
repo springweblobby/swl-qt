@@ -210,12 +210,15 @@ QObject* LobbyInterface::getUnitsync(QString qpath) {
     }
 }
 
-/*
-public void createScript(String scriptFile, String script)
-{
-    this.createScriptFile(scriptFile, script);
+void LobbyInterface::createScript(QString path, QString script) {
+    std::ofstream out(path.toStdString());
+    if (out.is_open() && out.good())
+        out << script.toStdString();
+    else
+        logger.error("Could not create script at ", path.toStdString());
 }
 
+/*
 private int byteToInt(byte b)
 {
     return (int) b & 0xff;
@@ -247,7 +250,6 @@ public int[] jsReadFileVFS(String unitsyncPath, int fd, int size)
 }
 
 
-
 public boolean killCommand( final String cmdName )
 {
     Process p = processes.get(cmdName);
@@ -255,45 +257,6 @@ public boolean killCommand( final String cmdName )
         p.destroy();
     }
     return true;
-}
-
-
-private void setOs(String os) {
-    this.os = os;
-    File f;
-    this.slash = os.equals("Windows") ? "\\" : "/";
-    if	(springHome != "") {
-
-    } else if( os.equals("Windows")) {
-        springHome = System.getProperty("user.home") + "\\Documents\\My Games\\Spring";
-    } else if( os.equals("Mac") || os.equals("Linux")) {
-        springHome = System.getProperty("user.home") + "/.spring";
-    } else {
-        return;
-    }
-    f = new File( springHome );
-    f.mkdirs();
-
-    if (!f.isDirectory()) {
-        System.err.println("alert('Cannot access spring home folder " + jsFix(springHome) + "\nApparently, automatic detection has failed. Please set the correct one in settings.');");
-    }
-
-    String weblobbyHome = springHome + this.slash + "weblobby";
-
-    f = new File( weblobbyHome + this.slash + "engine" );
-    f.mkdirs();
-
-    f = new File( weblobbyHome + this.slash + "pr-downloader" );
-    f.mkdirs();
-
-    f = new File( weblobbyHome + this.slash + "logs" );
-    f.mkdirs();
-}
-
-
-public void createDir(final String path) {
-    File f = new File( path );
-    f.mkdir();
 }
 
 public void runCommand(final String cmdName, final String[] cmd) {
@@ -314,52 +277,32 @@ public void runCommand(final String cmdName, final String[] cmd) {
             runCommandThread(cmdName, cmd);
         }
     }).start(); //new Thread(new Runnable() {
-}
+}*/
 
-private void createScriptFile(final String scriptFile, final String script) {
-    System.out.println("Creating script: " + scriptFile );
-    try {
-        PrintWriter out = new PrintWriter( scriptFile );
-        System.out.println( "Writing to script file: " +  scriptFile );
-        out.print(script);
-        out.close();
-    } catch (Exception e) {
-        WriteToLogFile( e );
+void LobbyInterface::createUiKeys(QString qpath) {
+    boost::system::error_code ec;
+    std::string path = qpath.toStdString();
+    if (!fs::exists({ path }, ec) && ec == 0) {
+        logger.info("Creating empty uikeys: ", path);
+        std::ofstream out(path);
     }
 }
 
-public void createUiKeys(final String path) {
-    System.out.println( "Creating empty uikeys: " + path );
-    try {
-        PrintWriter out = new PrintWriter( path );
-        out.print("");
-        out.close();
-    } catch(Exception e) {
-        e.printStackTrace();
-    }
-}
-public void deleteSpringSettings(final String path) {
-    if (!path.endsWith("springsettings.cfg")) {
-        System.out.println( "Delete SpringSettings error: " + path );
+void LobbyInterface::deleteSpringSettings(QString qpath) {
+    std::string path = qpath.toStdString();
+    if (!qpath.endsWith("springsettings.cfg")) {
+        logger.error("deleteSpringSettings(): not a spring settings file: ", path);
         return;
     }
-    echoJs( "Delete SpringSettings: " + path );
-    try	{
-        File f = new File( path );
-        f.delete();
-    } catch(Exception e) {
-        WriteToLogFile( e );
-    }
+    boost::system::error_code ec;
+    fs::remove({ path.c_str() }, ec);
+    if (ec == 0)
+        logger.info("Deleted spring settings: ", path);
+    else
+        logger.warning("Couldn't delete spring settings: ", path);
 }
 
-public String jsFix(String str) {
-    str = str.replace("\\", "\\\\");
-    str = str.replace("'", "\\'");
-    str = str.replace("\n", "\\n");
-    str = str.replace("\r", "");
-    return str;
-}
-
+/*
 private void setupEnvironment(ProcessBuilder pb) {
     pb.environment().put( "OMP_WAIT_POLICY", "ACTIVE" );
 }
@@ -406,24 +349,6 @@ private void runCommandThread(final String cmdName, final String[] cmd) {
         WriteToLogFile(e);
         e.printStackTrace();
     }
-}
-
-
-private void WriteToLogFile(Exception e) {
-    String logFile = this.springHome + this.slash + "WebLobbyLog.txt" ;
-    try	{
-        PrintWriter out = new PrintWriter( logFile );
-        echoJs( "Error. Writing to log file: " +  logFile );
-        out.println( "Begin log file.\n" );
-
-        e.printStackTrace( out );
-
-        out.close();
-    } catch(Exception e2)
-    {
-        e.printStackTrace();
-    }
-
 }*/
 
 void LobbyInterface::writeToFile(QString path, QString line) {
@@ -432,7 +357,9 @@ void LobbyInterface::writeToFile(QString path, QString line) {
 }
 
 
-/*public String ReadFileMore(final String logFile, final int numLines) {
+/* TODO: replace with a function to get replay info because that's how
+ * ReadFileMore() was used anyway.
+public String ReadFileMore(final String logFile, final int numLines) {
     try {
         File f = new File(logFile);
         if (!f.exists()) {
@@ -474,10 +401,11 @@ std::string LobbyInterface::escapeJs(const std::string& str) {
     }
     return res;
 }
-/*
 
-private DatagramSocket dsocket;
-public int sendSomePacket(final String host, final int port, final String messageString ) {
+int LobbyInterface::sendSomePacket(QString host, unsigned int port, QString msg) {
+    return -1;
+    /* TODO: This is called from JS but the result is never used. The purpose of
+     * learning the local port of a UDP socket is unclear.
     try {
         //int port = 90;
 
@@ -503,46 +431,8 @@ public int sendSomePacket(final String host, final int port, final String messag
         }
     }
     return -1;
-
+    */
 }
-
-
-public String getMacAddress() {
-    try {
-        InetAddress ip = InetAddress.getLocalHost();
-        //echoJs("IP = " + ip);
-
-        //NetworkInterface network = NetworkInterface.getByName("wlan0");
-
-        NetworkInterface network = NetworkInterface.getByInetAddress(ip);
-        if (network == null) {
-            Enumeration<NetworkInterface> networks = NetworkInterface.getNetworkInterfaces();
-            for (NetworkInterface netint : Collections.list(networks)) {
-                if (!netint.isLoopback() && !netint.isVirtual()) {
-                    network = netint;
-                }
-            }
-        }
-
-        byte[] mac = network.getHardwareAddress();
-        if (mac != null && mac.length > 0)	{
-            StringBuilder sb = new StringBuilder();
-            //sb.append( mac.length + "" );
-            for (int i = 0; i < mac.length; i++) {
-                //sb.append(String.format("%02X%s", mac[i], (i < mac.length - 1) ? ":" : ""));
-                sb.append(String.format( byteToInt( mac[i] ) +"%s", (i < mac.length - 1) ? ":" : ""));
-                //sb.append(String.format( mac[i] +"%s", (i < mac.length - 1) ? ":" : ""));
-            }
-
-            return sb.toString();
-        }
-    } catch (Exception e) {
-        e.printStackTrace();
-    }
-
-    return "";
-
-}*/
 
 long LobbyInterface::getUserID() {
     for(auto i : QNetworkInterface::allInterfaces()) {
@@ -550,6 +440,7 @@ long LobbyInterface::getUserID() {
                 (i.flags() & QNetworkInterface::IsRunning) &&
                 !(i.flags() & QNetworkInterface::IsLoopBack) &&
                 !i.hardwareAddress().startsWith("00:00:00:00")) { // hax
+            logger.debug("Using ", i.hardwareAddress().toStdString(), " mac address in getUserID()");
             std::string str = i.hardwareAddress().toStdString() + "lobby.springrts.com";
             boost::crc_32_type crc;
             // Do we include '\0'? Does it matter?
@@ -558,9 +449,4 @@ long LobbyInterface::getUserID() {
         }
     }
     return 0;
-    /*String mac = getMacAddress() + "lobby.springrts.com";
-
-    CRC32 crc32 = new CRC32();
-    crc32.update( mac.getBytes() );
-    return crc32.getValue();*/
 }

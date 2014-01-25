@@ -58,6 +58,9 @@ public slots:
     QString listFiles(QString path);
     QString readFileLess(QString path, unsigned int lines);
     void writeToFile(QString path, QString line);
+    void createScript(QString path, QString script);
+    void createUiKeys(QString path);
+    void deleteSpringSettings(QString path);
 
     QObject* getUnitsync(QString path);
 
@@ -66,6 +69,7 @@ public slots:
     void send(QString msg);
     bool downloadFile(QString source, QString target);
     long getUserID();
+    int sendSomePacket(QString host, unsigned int port, QString msg);
 
     QString getSpringHome();
     void setSpringHome(QString path);
