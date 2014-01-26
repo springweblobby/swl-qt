@@ -368,6 +368,23 @@ UnitsyncHandler::UnitsyncHandler(UnitsyncHandler&& h) : QObject(h.parent()),
     fptr_OpenArchiveType = h.fptr_OpenArchiveType;
 }
 
+// Returns a %-escaped string ready for use in a data URL.
+QString UnitsyncHandler::jsReadFileVFS(int fd, int size) {
+    char buf[size + sizeof(int)];
+    if (fptr_ReadFileVFS(fd, (unsigned char*)buf, size) != size)
+        logger.warning("ReadFileVFS(): size mismatch");
+    QString res, tmp;
+    for (int i = 0; i < size; i++) {
+        // %X converts an unsigned int into hex representation and we take the
+	// last 2 characters to get the byte value.
+        tmp = tmp.sprintf("%X", buf[i]).right(2);
+	if (tmp.length() == 1)
+            tmp = "0" + tmp;
+	res += "%" + tmp;
+    }
+    return res;
+}
+
 QString UnitsyncHandler::getNextError() {
     if (fptr_GetNextError == NULL) {
         logger.error("Bad function pointer: GetNextError");

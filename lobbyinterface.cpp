@@ -219,37 +219,6 @@ void LobbyInterface::createScript(QString path, QString script) {
 }
 
 /*
-private int byteToInt(byte b)
-{
-    return (int) b & 0xff;
-}
-private int byteToShort(byte b)
-{
-    return (short) ((short) b & 0xff);
-}
-
-public int[] jsReadFileVFS(String unitsyncPath, int fd, int size)
-{
-    byte[] bytes = new byte[size];
-    ByteBuffer buff = ByteBuffer.wrap(bytes);
-    int bytesRead;
-    bytesRead = this.getUnitsync(unitsyncPath).readFileVFS(fd, buff, size );
-    //this.echoJs( buff.toString() );
-    System.out.println("Bytes read: " + bytesRead );
-    byte[] byteArray = buff.array();
-    int[] ints = new int[ byteArray.length ];
-
-    for (int i = 0; i < byteArray.length; ++i)
-    {
-        //ints[i] = (int)byteArray[i];
-        //ints[i] = byteToInt( byteArray[i] );
-        ints[i] = byteArray[i];
-
-    }
-    return ints;
-}
-
-
 public boolean killCommand( final String cmdName )
 {
     Process p = processes.get(cmdName);

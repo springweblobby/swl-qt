@@ -28,6 +28,9 @@ public:
     };
 
 public slots:
+
+    QString jsReadFileVFS(int fd, int size);
+
     // Unitsync functions.
 
     ${header_public_methods}
