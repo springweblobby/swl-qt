@@ -60,6 +60,7 @@ void ProcessRunner::run() {
         if((ptr = std::getenv(i)))
             env.push_back(i + std::string("=") + std::string(ptr));
     }
+    env.push_back("OMP_WAIT_POLICY=ACTIVE"); // not sure what this is for.
 
     try {
         auto child = process::execute(

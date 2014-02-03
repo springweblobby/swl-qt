@@ -269,55 +269,6 @@ void LobbyInterface::deleteSpringSettings(QString qpath) {
         logger.warning("Couldn't delete spring settings: ", path);
 }
 
-/*
-private void setupEnvironment(ProcessBuilder pb) {
-    pb.environment().put( "OMP_WAIT_POLICY", "ACTIVE" );
-}
-
-private void runCommandThread(final String cmdName, final String[] cmd) {
-    if(cmd[0].contains( "pr-downloader")) {
-        //String newCmd = this.springHome + this.slash + "pr-downloader" + this.slash + "pr-downloader";
-        //cmd[0] = cmd[0].replace( "pr-downloader", newCmd );
-    } else if(cmd[0].toLowerCase().contains("spring")) {
-        System.out.println("Starting Spring shortly... " +  cmd[0] );
-    } else if(cmd[1].toLowerCase().contains( "spring")) {
-        System.out.println("Starting Spring shortly... " +  cmd[0] + " " + cmd[1] );
-    } else {
-        System.err.println("Bad command.");
-        return;
-    }
-
-    if (processes.get(cmdName) != null)	{
-        return;
-    } try {
-        //echoJs( "running command... " + cmd[0] );
-
-        //Runtime runtime = Runtime.getRuntime();
-        //Process pr = runtime.exec( cmd2 );
-
-
-        ProcessBuilder builder = new ProcessBuilder(cmd);
-        builder.redirectErrorStream(true);
-        setupEnvironment( builder );
-        Process pr = builder.start();
-
-        processes.put(cmdName, pr);
-
-        BufferedReader buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-
-        String line = "";
-
-        while ((line=buf.readLine())!=null) {
-            doJs("commandStream('"+ jsFix(cmdName) +"', '"+jsFix(line)+"')");
-        }
-        processes.remove(cmdName);
-        doJs("commandStream('exit', '"+jsFix(cmdName)+"')");
-    } catch (Exception e) {
-        WriteToLogFile(e);
-        e.printStackTrace();
-    }
-}*/
-
 void LobbyInterface::writeToFile(QString path, QString line) {
     std::ofstream out(path.toStdString(), std::ios_base::app);
     out << line.toStdString() << std::endl;
