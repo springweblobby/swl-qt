@@ -5,11 +5,50 @@
 #include "unitsynchandler.h"
 #include <QObject>
 #include <QEvent>
+#include <QStringList>
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
+#include <boost/process.hpp>
+#include <boost/iostreams/device/file_descriptor.hpp>
+#include <functional>
 #include <map>
 
 class QWebFrame;
+
+class ProcessRunner {
+public:
+    ProcessRunner(QObject* eventReceiver, const std::string& cmd, const std::vector<std::string>& args);
+    ProcessRunner(ProcessRunner&&);
+    ~ProcessRunner();
+
+    // Throws boost::system::system_error on failure.
+    void run();
+    // Throws boost::system::system_error on failure.
+    void terminate();
+
+    // This event is posted to eventReceiver when the underlying process
+    // writes a line into stdout.
+    struct ReadEvent : QEvent {
+        ReadEvent(std::string cmd, std::string msg) : QEvent(QEvent::Type(TypeId)), cmd(cmd), msg(msg) {}
+        std::string cmd;
+        std::string msg;
+        static const int TypeId = QEvent::User + 3; // more magic numbers
+    };
+    // This event is posted when the process terminates.
+    struct TerminateEvent : QEvent {
+        TerminateEvent(std::string cmd) : QEvent(QEvent::Type(TypeId)), cmd(cmd) {}
+        std::string cmd;
+        static const int TypeId = QEvent::User + 4; // even more magic numbers
+    };
+private:
+    void runService();
+    QObject* eventReceiver;
+    std::string cmd;
+    std::vector<std::string> args;
+    std::function<void()> terminate_func;
+    boost::asio::io_service service;
+    boost::thread thread;
+};
 
 class NetworkHandler {
 public:
@@ -64,6 +103,9 @@ public slots:
 
     QObject* getUnitsync(QString path);
 
+    void killCommand(QString cmdName);
+    void runCommand(QString cmdName, QStringList args);
+
     void connect(QString host, unsigned int port);
     void disconnect();
     void send(QString msg);
@@ -84,6 +126,7 @@ private:
     NetworkHandler network;
     QWebFrame* frame;
     std::map<std::string, UnitsyncHandler> unitsyncs;
+    std::map<std::string, ProcessRunner> processes;
 };
 
 #endif // LOBBYINTERFACE_H

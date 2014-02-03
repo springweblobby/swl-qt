@@ -86,6 +86,14 @@ bool LobbyInterface::event(QEvent* evt) {
         if(logEvt.lev == Logger::level::error)
             evalJs("alert2('" + escapeJs(logEvt.msg) + "')");
         return true;
+    } else if (evt->type() == ProcessRunner::ReadEvent::TypeId) {
+        auto readEvt = dynamic_cast<ProcessRunner::ReadEvent&>(*evt);
+        evalJs("commandStream('" + escapeJs(readEvt.cmd) + "', '" + escapeJs(readEvt.msg) + "')");
+        return true;
+    } else if (evt->type() == ProcessRunner::TerminateEvent::TypeId) {
+        auto termEvt = dynamic_cast<ProcessRunner::TerminateEvent&>(*evt);
+        evalJs("commandStream('exit', '" + escapeJs(termEvt.cmd) + "')");
+        return true;
     } else {
         return QObject::event(evt);
     }
@@ -218,35 +226,25 @@ void LobbyInterface::createScript(QString path, QString script) {
         logger.error("Could not create script at ", path.toStdString());
 }
 
-/*
-public boolean killCommand( final String cmdName )
+void LobbyInterface::killCommand(QString qcmdName)
 {
-    Process p = processes.get(cmdName);
-    if (p != null) {
-        p.destroy();
+    auto cmdName = qcmdName.toStdString();
+    if(processes.count(cmdName)) {
+        processes.find(cmdName)->second.terminate(); // TODO catch exception
+        processes.erase(processes.find(cmdName));
     }
-    return true;
 }
 
-public void runCommand(final String cmdName, final String[] cmd) {
-    //
-    // Chromium Bug:
-    // cmd is coming in as a string(?) instead of as an array of strings.
-    // Appears fine in javascript but not in this function
-    // Chromium only, not Windows Chrome
-    //
-    //
-    echoJs( "begin runCommand1: " );
-    echoJs( "begin runCommand2: " + cmd );
-    echoJs( "begin runCommand3: " + cmd[0] );
-    //
-
-    new Thread(new Runnable() {
-        public void run() {
-            runCommandThread(cmdName, cmd);
-        }
-    }).start(); //new Thread(new Runnable() {
-}*/
+void LobbyInterface::runCommand(QString qcmdName, QStringList cmd) {
+    auto cmdName = qcmdName.toStdString();
+    if(!processes.count(cmdName)) {
+        std::vector<std::string> args;
+        for(auto i : cmd)
+            args.push_back(i.toStdString());
+        logger.info("Running command (", cmdName, "):\n", cmd.join(" ").toStdString());
+        processes.insert(std::make_pair(cmdName, ProcessRunner(this, cmdName, args))).first->second.run();
+    }
+}
 
 void LobbyInterface::createUiKeys(QString qpath) {
     boost::system::error_code ec;

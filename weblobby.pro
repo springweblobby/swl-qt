@@ -1,11 +1,13 @@
 greaterThan(QT_MAJOR_VERSION, 4):QT += widgets webkitwidgets
 CONFIG += c++11
+CONFIG += debug
 
 SOURCES += main.cpp \
     weblobbywindow.cpp \
     lobbyinterface.cpp \
     networkhandler.cpp \
-    unitsynchandler.cpp
+    unitsynchandler.cpp \
+    processrunner.cpp
 
 HEADERS += \
     weblobbywindow.h \
@@ -15,7 +17,7 @@ HEADERS += \
 
 INCLUDEPATH += Boost.Process-0.5
 
-LIBS += -lboost_filesystem -lboost_system -lboost_thread
+LIBS += -lboost_filesystem -lboost_system -lboost_thread -lboost_iostreams
 
 # Add more folders to ship with the application, here
 
