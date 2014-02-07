@@ -20,11 +20,11 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
 }
 
 void LobbyInterface::init() {
-    #ifdef Q_OS_LINUX
+    #if defined Q_OS_LINUX
         os = "Linux";
-    #elif Q_OS_WIN32 // Defined on 64-bit Windows too.
+    #elif defined Q_OS_WIN32 // Defined on 64-bit Windows too.
         os = "Windows";
-    #elif Q_OS_MAC
+    #elif defined Q_OS_MAC
         os = "Mac";
     #else
         #error "Unknown target OS."
@@ -34,7 +34,7 @@ void LobbyInterface::init() {
     else if (os == "Windows") {
         // This calls SHGetFolderPath(... CSIDL_PERSONAL ...), same as what Spring uses.
         springHome = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation).toStdString() +
-            "\\My Games\\Spring";
+            "/My Games/Spring";
     } else {
         // ~/.spring
         springHome = QStandardPaths::writableLocation(QStandardPaths::HomeLocation).toStdString() +
@@ -43,7 +43,8 @@ void LobbyInterface::init() {
     logger.info("springHome is ", springHome);
 
     try {
-        const char slash = (os == "Windows" ? '\\' : '/');
+        //const char slash = (os == "Windows" ? '\\' : '/');
+        const char slash = '/';
         const std::string weblobbyDir = springHome + slash + "weblobby" + slash;
         fs::create_directories({ weblobbyDir + "engine" });
         fs::create_directories({ weblobbyDir + "pr-downloader" });
@@ -93,6 +94,11 @@ bool LobbyInterface::event(QEvent* evt) {
     } else if (evt->type() == ProcessRunner::TerminateEvent::TypeId) {
         auto termEvt = dynamic_cast<ProcessRunner::TerminateEvent&>(*evt);
         evalJs("commandStream('exit', '" + escapeJs(termEvt.cmd) + "')");
+        logger.info("Command finished: ", termEvt.cmd);
+        if(processes.count(termEvt.cmd)) {
+            processes.find(termEvt.cmd)->second.terminate();
+            processes.erase(processes.find(termEvt.cmd));
+        }
         return true;
     } else {
         return QObject::event(evt);
@@ -229,8 +235,9 @@ void LobbyInterface::createScript(QString path, QString script) {
 void LobbyInterface::killCommand(QString qcmdName)
 {
     auto cmdName = qcmdName.toStdString();
+    logger.info("Killing command: ", cmdName);
     if(processes.count(cmdName)) {
-        processes.find(cmdName)->second.terminate(); // TODO catch exception
+        processes.find(cmdName)->second.terminate();
         processes.erase(processes.find(cmdName));
     }
 }
@@ -242,7 +249,12 @@ void LobbyInterface::runCommand(QString qcmdName, QStringList cmd) {
         for(auto i : cmd)
             args.push_back(i.toStdString());
         logger.info("Running command (", cmdName, "):\n", cmd.join(" ").toStdString());
-        processes.insert(std::make_pair(cmdName, ProcessRunner(this, cmdName, args))).first->second.run();
+        try {
+            processes.insert(std::make_pair(cmdName, ProcessRunner(this, cmdName, args))).
+                first->second.run();
+        } catch(boost::system::system_error e) {
+            logger.error("Cannot start command: ", cmdName, ": ", e.what());
+        }
     }
 }
 

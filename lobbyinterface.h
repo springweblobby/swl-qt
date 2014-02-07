@@ -47,7 +47,7 @@ private:
     std::vector<std::string> args;
     std::function<void()> terminate_func;
     boost::asio::io_service service;
-    boost::thread thread;
+    boost::thread runServiceThread, waitForExitThread;
 };
 
 class NetworkHandler {

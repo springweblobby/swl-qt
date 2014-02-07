@@ -31,6 +31,9 @@ putTemplate funcs "move_ctor_assignment" = map (\(CFunc _ name _) ->
 putTemplate funcs "fptr_initialization_unix" = map (\(CFunc _ name _) ->
     "fptr_" <> name <> " = (fptr_type_" <> name <> ")dlsym(handle, \"" <> name <> "\");") funcs
 
+putTemplate funcs "fptr_initialization_windows" = map (\(CFunc _ name _) ->
+    "fptr_" <> name <> " = (fptr_type_" <> name <> ")GetProcAddress((HMODULE)handle, \"" <> name <> "\");") funcs
+
 putTemplate funcs "header_properties" = concat $ flip map funcs $ \(CFunc ret name args) ->
     ["typedef " <> showCType ret <> " (*fptr_type_" <> name <> ")(" <> commaList (map (\(Arg _ t) -> showCType t) args) <> ");",
      "fptr_type_" <> name <> " fptr_" <> name <> ";"]

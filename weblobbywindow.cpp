@@ -1,8 +1,9 @@
-#include <QtNetwork>
-#include <iostream>
+#include "lobbyinterface.h" // Must be included first.
 
 #include "weblobbywindow.h"
-#include "lobbyinterface.h"
+#include <iostream>
+#include <QtNetwork>
+
 
 void MyPage::javaScriptConsoleMessage(const QString& message, int lineNumber,
                                       const QString& sourceID) {
@@ -31,8 +32,8 @@ WebLobbyWindow::WebLobbyWindow(QWidget *parent) : QMainWindow(parent) {
     connect(view, SIGNAL(loadProgress(int)), SLOT(setProgress(int)));
     connect(view, SIGNAL(loadFinished(bool)), SLOT(finishLoading(bool)));
 
-    //view->load(QUrl("http://weblobby.springrts.com/desktop/index.html"));
-    view->load(QUrl("file:///home/user/dev/swl-qtcpp/site/index.html"));
+    view->load(QUrl("http://weblobby.springrts.com/test-qtcpp/index.html"));
+    //view->load(QUrl("file:///D:/mingw32/msys/1.0/home/user/qtswl/site/index.html"));
     connect(view->page()->mainFrame(), SIGNAL(javaScriptWindowObjectCleared()),
             this, SLOT(addJSObject()));
 

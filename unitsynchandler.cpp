@@ -2,7 +2,13 @@
 #if defined Q_OS_LINUX || defined Q_OS_MAC
     #include <dlfcn.h>
 #elif defined Q_OS_WIN32
-    #error "Not implemented yet."
+	#include <windows.h>
+    #ifndef LOAD_LIBRARY_SEARCH_DEFAULT_DIRS
+        #define LOAD_LIBRARY_SEARCH_DEFAULT_DIRS 0x1000
+    #endif
+    #ifndef LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR
+        #define LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR 0x100
+    #endif
 #else
     #error "Unknown target OS."
 #endif
@@ -182,7 +188,175 @@ UnitsyncHandler::UnitsyncHandler(QObject* parent, Logger& logger, std::string pa
 
         ready = true;
     #elif defined Q_OS_WIN32
-        #error "Not implemented yet."
+        handle = LoadLibraryEx(std::wstring(path.begin(), path.end()).c_str(), NULL,
+            LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR);
+        if(handle == NULL) {
+            logger.error("Could not load unitsync at ", path, ": ", GetLastError());
+            return;
+        }
+
+        fptr_GetNextError = (fptr_type_GetNextError)GetProcAddress((HMODULE)handle, "GetNextError");
+        fptr_GetSpringVersion = (fptr_type_GetSpringVersion)GetProcAddress((HMODULE)handle, "GetSpringVersion");
+        fptr_GetSpringVersionPatchset = (fptr_type_GetSpringVersionPatchset)GetProcAddress((HMODULE)handle, "GetSpringVersionPatchset");
+        fptr_IsSpringReleaseVersion = (fptr_type_IsSpringReleaseVersion)GetProcAddress((HMODULE)handle, "IsSpringReleaseVersion");
+        fptr_Init = (fptr_type_Init)GetProcAddress((HMODULE)handle, "Init");
+        fptr_UnInit = (fptr_type_UnInit)GetProcAddress((HMODULE)handle, "UnInit");
+        fptr_GetWritableDataDirectory = (fptr_type_GetWritableDataDirectory)GetProcAddress((HMODULE)handle, "GetWritableDataDirectory");
+        fptr_GetDataDirectoryCount = (fptr_type_GetDataDirectoryCount)GetProcAddress((HMODULE)handle, "GetDataDirectoryCount");
+        fptr_GetDataDirectory = (fptr_type_GetDataDirectory)GetProcAddress((HMODULE)handle, "GetDataDirectory");
+        fptr_ProcessUnits = (fptr_type_ProcessUnits)GetProcAddress((HMODULE)handle, "ProcessUnits");
+        fptr_GetUnitCount = (fptr_type_GetUnitCount)GetProcAddress((HMODULE)handle, "GetUnitCount");
+        fptr_GetUnitName = (fptr_type_GetUnitName)GetProcAddress((HMODULE)handle, "GetUnitName");
+        fptr_GetFullUnitName = (fptr_type_GetFullUnitName)GetProcAddress((HMODULE)handle, "GetFullUnitName");
+        fptr_AddArchive = (fptr_type_AddArchive)GetProcAddress((HMODULE)handle, "AddArchive");
+        fptr_AddAllArchives = (fptr_type_AddAllArchives)GetProcAddress((HMODULE)handle, "AddAllArchives");
+        fptr_RemoveAllArchives = (fptr_type_RemoveAllArchives)GetProcAddress((HMODULE)handle, "RemoveAllArchives");
+        fptr_GetArchiveChecksum = (fptr_type_GetArchiveChecksum)GetProcAddress((HMODULE)handle, "GetArchiveChecksum");
+        fptr_GetArchivePath = (fptr_type_GetArchivePath)GetProcAddress((HMODULE)handle, "GetArchivePath");
+        fptr_GetMapCount = (fptr_type_GetMapCount)GetProcAddress((HMODULE)handle, "GetMapCount");
+        fptr_GetMapName = (fptr_type_GetMapName)GetProcAddress((HMODULE)handle, "GetMapName");
+        fptr_GetMapFileName = (fptr_type_GetMapFileName)GetProcAddress((HMODULE)handle, "GetMapFileName");
+        fptr_GetMapDescription = (fptr_type_GetMapDescription)GetProcAddress((HMODULE)handle, "GetMapDescription");
+        fptr_GetMapAuthor = (fptr_type_GetMapAuthor)GetProcAddress((HMODULE)handle, "GetMapAuthor");
+        fptr_GetMapWidth = (fptr_type_GetMapWidth)GetProcAddress((HMODULE)handle, "GetMapWidth");
+        fptr_GetMapHeight = (fptr_type_GetMapHeight)GetProcAddress((HMODULE)handle, "GetMapHeight");
+        fptr_GetMapTidalStrength = (fptr_type_GetMapTidalStrength)GetProcAddress((HMODULE)handle, "GetMapTidalStrength");
+        fptr_GetMapWindMin = (fptr_type_GetMapWindMin)GetProcAddress((HMODULE)handle, "GetMapWindMin");
+        fptr_GetMapWindMax = (fptr_type_GetMapWindMax)GetProcAddress((HMODULE)handle, "GetMapWindMax");
+        fptr_GetMapGravity = (fptr_type_GetMapGravity)GetProcAddress((HMODULE)handle, "GetMapGravity");
+        fptr_GetMapResourceCount = (fptr_type_GetMapResourceCount)GetProcAddress((HMODULE)handle, "GetMapResourceCount");
+        fptr_GetMapResourceName = (fptr_type_GetMapResourceName)GetProcAddress((HMODULE)handle, "GetMapResourceName");
+        fptr_GetMapResourceMax = (fptr_type_GetMapResourceMax)GetProcAddress((HMODULE)handle, "GetMapResourceMax");
+        fptr_GetMapResourceExtractorRadius = (fptr_type_GetMapResourceExtractorRadius)GetProcAddress((HMODULE)handle, "GetMapResourceExtractorRadius");
+        fptr_GetMapPosCount = (fptr_type_GetMapPosCount)GetProcAddress((HMODULE)handle, "GetMapPosCount");
+        fptr_GetMapPosX = (fptr_type_GetMapPosX)GetProcAddress((HMODULE)handle, "GetMapPosX");
+        fptr_GetMapPosZ = (fptr_type_GetMapPosZ)GetProcAddress((HMODULE)handle, "GetMapPosZ");
+        fptr_GetMapMinHeight = (fptr_type_GetMapMinHeight)GetProcAddress((HMODULE)handle, "GetMapMinHeight");
+        fptr_GetMapMaxHeight = (fptr_type_GetMapMaxHeight)GetProcAddress((HMODULE)handle, "GetMapMaxHeight");
+        fptr_GetMapArchiveCount = (fptr_type_GetMapArchiveCount)GetProcAddress((HMODULE)handle, "GetMapArchiveCount");
+        fptr_GetMapArchiveName = (fptr_type_GetMapArchiveName)GetProcAddress((HMODULE)handle, "GetMapArchiveName");
+        fptr_GetMapChecksum = (fptr_type_GetMapChecksum)GetProcAddress((HMODULE)handle, "GetMapChecksum");
+        fptr_GetMapChecksumFromName = (fptr_type_GetMapChecksumFromName)GetProcAddress((HMODULE)handle, "GetMapChecksumFromName");
+        fptr_GetMinimap = (fptr_type_GetMinimap)GetProcAddress((HMODULE)handle, "GetMinimap");
+        fptr_GetInfoMapSize = (fptr_type_GetInfoMapSize)GetProcAddress((HMODULE)handle, "GetInfoMapSize");
+        fptr_GetInfoMap = (fptr_type_GetInfoMap)GetProcAddress((HMODULE)handle, "GetInfoMap");
+        fptr_GetSkirmishAICount = (fptr_type_GetSkirmishAICount)GetProcAddress((HMODULE)handle, "GetSkirmishAICount");
+        fptr_GetSkirmishAIInfoCount = (fptr_type_GetSkirmishAIInfoCount)GetProcAddress((HMODULE)handle, "GetSkirmishAIInfoCount");
+        fptr_GetInfoKey = (fptr_type_GetInfoKey)GetProcAddress((HMODULE)handle, "GetInfoKey");
+        fptr_GetInfoType = (fptr_type_GetInfoType)GetProcAddress((HMODULE)handle, "GetInfoType");
+        fptr_GetInfoValueString = (fptr_type_GetInfoValueString)GetProcAddress((HMODULE)handle, "GetInfoValueString");
+        fptr_GetInfoValueInteger = (fptr_type_GetInfoValueInteger)GetProcAddress((HMODULE)handle, "GetInfoValueInteger");
+        fptr_GetInfoValueFloat = (fptr_type_GetInfoValueFloat)GetProcAddress((HMODULE)handle, "GetInfoValueFloat");
+        fptr_GetInfoValueBool = (fptr_type_GetInfoValueBool)GetProcAddress((HMODULE)handle, "GetInfoValueBool");
+        fptr_GetInfoDescription = (fptr_type_GetInfoDescription)GetProcAddress((HMODULE)handle, "GetInfoDescription");
+        fptr_GetSkirmishAIOptionCount = (fptr_type_GetSkirmishAIOptionCount)GetProcAddress((HMODULE)handle, "GetSkirmishAIOptionCount");
+        fptr_GetPrimaryModCount = (fptr_type_GetPrimaryModCount)GetProcAddress((HMODULE)handle, "GetPrimaryModCount");
+        fptr_GetPrimaryModInfoCount = (fptr_type_GetPrimaryModInfoCount)GetProcAddress((HMODULE)handle, "GetPrimaryModInfoCount");
+        fptr_GetPrimaryModArchive = (fptr_type_GetPrimaryModArchive)GetProcAddress((HMODULE)handle, "GetPrimaryModArchive");
+        fptr_GetPrimaryModArchiveCount = (fptr_type_GetPrimaryModArchiveCount)GetProcAddress((HMODULE)handle, "GetPrimaryModArchiveCount");
+        fptr_GetPrimaryModArchiveList = (fptr_type_GetPrimaryModArchiveList)GetProcAddress((HMODULE)handle, "GetPrimaryModArchiveList");
+        fptr_GetPrimaryModIndex = (fptr_type_GetPrimaryModIndex)GetProcAddress((HMODULE)handle, "GetPrimaryModIndex");
+        fptr_GetPrimaryModChecksum = (fptr_type_GetPrimaryModChecksum)GetProcAddress((HMODULE)handle, "GetPrimaryModChecksum");
+        fptr_GetPrimaryModChecksumFromName = (fptr_type_GetPrimaryModChecksumFromName)GetProcAddress((HMODULE)handle, "GetPrimaryModChecksumFromName");
+        fptr_GetSideCount = (fptr_type_GetSideCount)GetProcAddress((HMODULE)handle, "GetSideCount");
+        fptr_GetSideName = (fptr_type_GetSideName)GetProcAddress((HMODULE)handle, "GetSideName");
+        fptr_GetSideStartUnit = (fptr_type_GetSideStartUnit)GetProcAddress((HMODULE)handle, "GetSideStartUnit");
+        fptr_GetMapOptionCount = (fptr_type_GetMapOptionCount)GetProcAddress((HMODULE)handle, "GetMapOptionCount");
+        fptr_GetModOptionCount = (fptr_type_GetModOptionCount)GetProcAddress((HMODULE)handle, "GetModOptionCount");
+        fptr_GetCustomOptionCount = (fptr_type_GetCustomOptionCount)GetProcAddress((HMODULE)handle, "GetCustomOptionCount");
+        fptr_GetOptionKey = (fptr_type_GetOptionKey)GetProcAddress((HMODULE)handle, "GetOptionKey");
+        fptr_GetOptionScope = (fptr_type_GetOptionScope)GetProcAddress((HMODULE)handle, "GetOptionScope");
+        fptr_GetOptionName = (fptr_type_GetOptionName)GetProcAddress((HMODULE)handle, "GetOptionName");
+        fptr_GetOptionSection = (fptr_type_GetOptionSection)GetProcAddress((HMODULE)handle, "GetOptionSection");
+        fptr_GetOptionStyle = (fptr_type_GetOptionStyle)GetProcAddress((HMODULE)handle, "GetOptionStyle");
+        fptr_GetOptionDesc = (fptr_type_GetOptionDesc)GetProcAddress((HMODULE)handle, "GetOptionDesc");
+        fptr_GetOptionType = (fptr_type_GetOptionType)GetProcAddress((HMODULE)handle, "GetOptionType");
+        fptr_GetOptionBoolDef = (fptr_type_GetOptionBoolDef)GetProcAddress((HMODULE)handle, "GetOptionBoolDef");
+        fptr_GetOptionNumberDef = (fptr_type_GetOptionNumberDef)GetProcAddress((HMODULE)handle, "GetOptionNumberDef");
+        fptr_GetOptionNumberMin = (fptr_type_GetOptionNumberMin)GetProcAddress((HMODULE)handle, "GetOptionNumberMin");
+        fptr_GetOptionNumberMax = (fptr_type_GetOptionNumberMax)GetProcAddress((HMODULE)handle, "GetOptionNumberMax");
+        fptr_GetOptionNumberStep = (fptr_type_GetOptionNumberStep)GetProcAddress((HMODULE)handle, "GetOptionNumberStep");
+        fptr_GetOptionStringDef = (fptr_type_GetOptionStringDef)GetProcAddress((HMODULE)handle, "GetOptionStringDef");
+        fptr_GetOptionStringMaxLen = (fptr_type_GetOptionStringMaxLen)GetProcAddress((HMODULE)handle, "GetOptionStringMaxLen");
+        fptr_GetOptionListCount = (fptr_type_GetOptionListCount)GetProcAddress((HMODULE)handle, "GetOptionListCount");
+        fptr_GetOptionListDef = (fptr_type_GetOptionListDef)GetProcAddress((HMODULE)handle, "GetOptionListDef");
+        fptr_GetOptionListItemKey = (fptr_type_GetOptionListItemKey)GetProcAddress((HMODULE)handle, "GetOptionListItemKey");
+        fptr_GetOptionListItemName = (fptr_type_GetOptionListItemName)GetProcAddress((HMODULE)handle, "GetOptionListItemName");
+        fptr_GetOptionListItemDesc = (fptr_type_GetOptionListItemDesc)GetProcAddress((HMODULE)handle, "GetOptionListItemDesc");
+        fptr_GetModValidMapCount = (fptr_type_GetModValidMapCount)GetProcAddress((HMODULE)handle, "GetModValidMapCount");
+        fptr_GetModValidMap = (fptr_type_GetModValidMap)GetProcAddress((HMODULE)handle, "GetModValidMap");
+        fptr_OpenFileVFS = (fptr_type_OpenFileVFS)GetProcAddress((HMODULE)handle, "OpenFileVFS");
+        fptr_CloseFileVFS = (fptr_type_CloseFileVFS)GetProcAddress((HMODULE)handle, "CloseFileVFS");
+        fptr_ReadFileVFS = (fptr_type_ReadFileVFS)GetProcAddress((HMODULE)handle, "ReadFileVFS");
+        fptr_FileSizeVFS = (fptr_type_FileSizeVFS)GetProcAddress((HMODULE)handle, "FileSizeVFS");
+        fptr_InitFindVFS = (fptr_type_InitFindVFS)GetProcAddress((HMODULE)handle, "InitFindVFS");
+        fptr_InitDirListVFS = (fptr_type_InitDirListVFS)GetProcAddress((HMODULE)handle, "InitDirListVFS");
+        fptr_InitSubDirsVFS = (fptr_type_InitSubDirsVFS)GetProcAddress((HMODULE)handle, "InitSubDirsVFS");
+        fptr_FindFilesVFS = (fptr_type_FindFilesVFS)GetProcAddress((HMODULE)handle, "FindFilesVFS");
+        fptr_OpenArchive = (fptr_type_OpenArchive)GetProcAddress((HMODULE)handle, "OpenArchive");
+        fptr_CloseArchive = (fptr_type_CloseArchive)GetProcAddress((HMODULE)handle, "CloseArchive");
+        fptr_FindFilesArchive = (fptr_type_FindFilesArchive)GetProcAddress((HMODULE)handle, "FindFilesArchive");
+        fptr_OpenArchiveFile = (fptr_type_OpenArchiveFile)GetProcAddress((HMODULE)handle, "OpenArchiveFile");
+        fptr_ReadArchiveFile = (fptr_type_ReadArchiveFile)GetProcAddress((HMODULE)handle, "ReadArchiveFile");
+        fptr_CloseArchiveFile = (fptr_type_CloseArchiveFile)GetProcAddress((HMODULE)handle, "CloseArchiveFile");
+        fptr_SizeArchiveFile = (fptr_type_SizeArchiveFile)GetProcAddress((HMODULE)handle, "SizeArchiveFile");
+        fptr_SetSpringConfigFile = (fptr_type_SetSpringConfigFile)GetProcAddress((HMODULE)handle, "SetSpringConfigFile");
+        fptr_GetSpringConfigFile = (fptr_type_GetSpringConfigFile)GetProcAddress((HMODULE)handle, "GetSpringConfigFile");
+        fptr_GetSpringConfigString = (fptr_type_GetSpringConfigString)GetProcAddress((HMODULE)handle, "GetSpringConfigString");
+        fptr_GetSpringConfigInt = (fptr_type_GetSpringConfigInt)GetProcAddress((HMODULE)handle, "GetSpringConfigInt");
+        fptr_GetSpringConfigFloat = (fptr_type_GetSpringConfigFloat)GetProcAddress((HMODULE)handle, "GetSpringConfigFloat");
+        fptr_SetSpringConfigString = (fptr_type_SetSpringConfigString)GetProcAddress((HMODULE)handle, "SetSpringConfigString");
+        fptr_SetSpringConfigInt = (fptr_type_SetSpringConfigInt)GetProcAddress((HMODULE)handle, "SetSpringConfigInt");
+        fptr_SetSpringConfigFloat = (fptr_type_SetSpringConfigFloat)GetProcAddress((HMODULE)handle, "SetSpringConfigFloat");
+        fptr_DeleteSpringConfigKey = (fptr_type_DeleteSpringConfigKey)GetProcAddress((HMODULE)handle, "DeleteSpringConfigKey");
+        fptr_lpClose = (fptr_type_lpClose)GetProcAddress((HMODULE)handle, "lpClose");
+        fptr_lpOpenFile = (fptr_type_lpOpenFile)GetProcAddress((HMODULE)handle, "lpOpenFile");
+        fptr_lpOpenSource = (fptr_type_lpOpenSource)GetProcAddress((HMODULE)handle, "lpOpenSource");
+        fptr_lpExecute = (fptr_type_lpExecute)GetProcAddress((HMODULE)handle, "lpExecute");
+        fptr_lpErrorLog = (fptr_type_lpErrorLog)GetProcAddress((HMODULE)handle, "lpErrorLog");
+        fptr_lpAddTableInt = (fptr_type_lpAddTableInt)GetProcAddress((HMODULE)handle, "lpAddTableInt");
+        fptr_lpAddTableStr = (fptr_type_lpAddTableStr)GetProcAddress((HMODULE)handle, "lpAddTableStr");
+        fptr_lpEndTable = (fptr_type_lpEndTable)GetProcAddress((HMODULE)handle, "lpEndTable");
+        fptr_lpAddIntKeyIntVal = (fptr_type_lpAddIntKeyIntVal)GetProcAddress((HMODULE)handle, "lpAddIntKeyIntVal");
+        fptr_lpAddStrKeyIntVal = (fptr_type_lpAddStrKeyIntVal)GetProcAddress((HMODULE)handle, "lpAddStrKeyIntVal");
+        fptr_lpAddIntKeyBoolVal = (fptr_type_lpAddIntKeyBoolVal)GetProcAddress((HMODULE)handle, "lpAddIntKeyBoolVal");
+        fptr_lpAddStrKeyBoolVal = (fptr_type_lpAddStrKeyBoolVal)GetProcAddress((HMODULE)handle, "lpAddStrKeyBoolVal");
+        fptr_lpAddIntKeyFloatVal = (fptr_type_lpAddIntKeyFloatVal)GetProcAddress((HMODULE)handle, "lpAddIntKeyFloatVal");
+        fptr_lpAddStrKeyFloatVal = (fptr_type_lpAddStrKeyFloatVal)GetProcAddress((HMODULE)handle, "lpAddStrKeyFloatVal");
+        fptr_lpAddIntKeyStrVal = (fptr_type_lpAddIntKeyStrVal)GetProcAddress((HMODULE)handle, "lpAddIntKeyStrVal");
+        fptr_lpAddStrKeyStrVal = (fptr_type_lpAddStrKeyStrVal)GetProcAddress((HMODULE)handle, "lpAddStrKeyStrVal");
+        fptr_lpRootTable = (fptr_type_lpRootTable)GetProcAddress((HMODULE)handle, "lpRootTable");
+        fptr_lpRootTableExpr = (fptr_type_lpRootTableExpr)GetProcAddress((HMODULE)handle, "lpRootTableExpr");
+        fptr_lpSubTableInt = (fptr_type_lpSubTableInt)GetProcAddress((HMODULE)handle, "lpSubTableInt");
+        fptr_lpSubTableStr = (fptr_type_lpSubTableStr)GetProcAddress((HMODULE)handle, "lpSubTableStr");
+        fptr_lpSubTableExpr = (fptr_type_lpSubTableExpr)GetProcAddress((HMODULE)handle, "lpSubTableExpr");
+        fptr_lpPopTable = (fptr_type_lpPopTable)GetProcAddress((HMODULE)handle, "lpPopTable");
+        fptr_lpGetKeyExistsInt = (fptr_type_lpGetKeyExistsInt)GetProcAddress((HMODULE)handle, "lpGetKeyExistsInt");
+        fptr_lpGetKeyExistsStr = (fptr_type_lpGetKeyExistsStr)GetProcAddress((HMODULE)handle, "lpGetKeyExistsStr");
+        fptr_lpGetIntKeyType = (fptr_type_lpGetIntKeyType)GetProcAddress((HMODULE)handle, "lpGetIntKeyType");
+        fptr_lpGetStrKeyType = (fptr_type_lpGetStrKeyType)GetProcAddress((HMODULE)handle, "lpGetStrKeyType");
+        fptr_lpGetIntKeyListCount = (fptr_type_lpGetIntKeyListCount)GetProcAddress((HMODULE)handle, "lpGetIntKeyListCount");
+        fptr_lpGetIntKeyListEntry = (fptr_type_lpGetIntKeyListEntry)GetProcAddress((HMODULE)handle, "lpGetIntKeyListEntry");
+        fptr_lpGetStrKeyListCount = (fptr_type_lpGetStrKeyListCount)GetProcAddress((HMODULE)handle, "lpGetStrKeyListCount");
+        fptr_lpGetStrKeyListEntry = (fptr_type_lpGetStrKeyListEntry)GetProcAddress((HMODULE)handle, "lpGetStrKeyListEntry");
+        fptr_lpGetIntKeyIntVal = (fptr_type_lpGetIntKeyIntVal)GetProcAddress((HMODULE)handle, "lpGetIntKeyIntVal");
+        fptr_lpGetStrKeyIntVal = (fptr_type_lpGetStrKeyIntVal)GetProcAddress((HMODULE)handle, "lpGetStrKeyIntVal");
+        fptr_lpGetIntKeyBoolVal = (fptr_type_lpGetIntKeyBoolVal)GetProcAddress((HMODULE)handle, "lpGetIntKeyBoolVal");
+        fptr_lpGetStrKeyBoolVal = (fptr_type_lpGetStrKeyBoolVal)GetProcAddress((HMODULE)handle, "lpGetStrKeyBoolVal");
+        fptr_lpGetIntKeyFloatVal = (fptr_type_lpGetIntKeyFloatVal)GetProcAddress((HMODULE)handle, "lpGetIntKeyFloatVal");
+        fptr_lpGetStrKeyFloatVal = (fptr_type_lpGetStrKeyFloatVal)GetProcAddress((HMODULE)handle, "lpGetStrKeyFloatVal");
+        fptr_lpGetIntKeyStrVal = (fptr_type_lpGetIntKeyStrVal)GetProcAddress((HMODULE)handle, "lpGetIntKeyStrVal");
+        fptr_lpGetStrKeyStrVal = (fptr_type_lpGetStrKeyStrVal)GetProcAddress((HMODULE)handle, "lpGetStrKeyStrVal");
+        fptr_ProcessUnitsNoChecksum = (fptr_type_ProcessUnitsNoChecksum)GetProcAddress((HMODULE)handle, "ProcessUnitsNoChecksum");
+        fptr_GetInfoValue = (fptr_type_GetInfoValue)GetProcAddress((HMODULE)handle, "GetInfoValue");
+        fptr_GetPrimaryModName = (fptr_type_GetPrimaryModName)GetProcAddress((HMODULE)handle, "GetPrimaryModName");
+        fptr_GetPrimaryModShortName = (fptr_type_GetPrimaryModShortName)GetProcAddress((HMODULE)handle, "GetPrimaryModShortName");
+        fptr_GetPrimaryModVersion = (fptr_type_GetPrimaryModVersion)GetProcAddress((HMODULE)handle, "GetPrimaryModVersion");
+        fptr_GetPrimaryModMutator = (fptr_type_GetPrimaryModMutator)GetProcAddress((HMODULE)handle, "GetPrimaryModMutator");
+        fptr_GetPrimaryModGame = (fptr_type_GetPrimaryModGame)GetProcAddress((HMODULE)handle, "GetPrimaryModGame");
+        fptr_GetPrimaryModShortGame = (fptr_type_GetPrimaryModShortGame)GetProcAddress((HMODULE)handle, "GetPrimaryModShortGame");
+        fptr_GetPrimaryModDescription = (fptr_type_GetPrimaryModDescription)GetProcAddress((HMODULE)handle, "GetPrimaryModDescription");
+        fptr_OpenArchiveType = (fptr_type_OpenArchiveType)GetProcAddress((HMODULE)handle, "OpenArchiveType");
     #else
         #error "Unknown target OS."
     #endif
@@ -193,7 +367,8 @@ UnitsyncHandler::~UnitsyncHandler() {
         if (handle)
             dlclose(handle);
     #elif defined Q_OS_WIN32
-        #error "Not implemented yet."
+        if (handle)
+            FreeLibrary((HMODULE)handle);
     #else
         #error "Unknown target OS."
     #endif

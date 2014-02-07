@@ -1,10 +1,28 @@
 #include "lobbyinterface.h"
 #include <cstdlib>
+#include <exception>
 #include <QCoreApplication>
 #include <boost/process/mitigate.hpp>
+#include <boost/chrono/include.hpp>
+#ifdef BOOST_WINDOWS_API
+    #include <windows.h>
+    #include <ctime>
+    #include <random>
+#endif
 
 namespace process = boost::process;
 namespace asio = boost::asio;
+
+typedef asio::buffers_iterator<asio::streambuf::const_buffers_type> buf_iterator;
+std::pair<buf_iterator, bool> matchNewline(buf_iterator begin, buf_iterator end) {
+    for(auto i = begin; i != end; i++) {
+        if(*i == '\r' && i + 1 != end && *(++i) == '\n')
+            return std::make_pair(++i, true);
+        else if(*i == '\n' || *i == '\r')
+            return std::make_pair(++i, true);
+    }
+    return std::make_pair(end, false);
+}
 
 void ProcessRunner::run() {
     using namespace boost::process::initializers;
@@ -13,18 +31,38 @@ void ProcessRunner::run() {
         process::pipe stdout_pipe = process::create_pipe();
         auto stdout_sink = file_descriptor_sink(stdout_pipe.sink, close_handle);
         auto stdout_pend = std::make_shared<process::pipe_end>(service, stdout_pipe.source);
+
         process::pipe stderr_pipe = process::create_pipe();
         auto stderr_sink = file_descriptor_sink(stderr_pipe.sink, close_handle);
         auto stderr_pend = std::make_shared<process::pipe_end>(service, stderr_pipe.source);
     #elif defined BOOST_WINDOWS_API
-        #error "Not implemented yet. I've heard creating a named pipe in WINAPI is such a hassle."
+        static std::minstd_rand rand(std::time(NULL));
+        std::wstring pipe_name = L"\\\\.\\pipe\\springweblobby" + std::to_wstring(rand());
+
+        HANDLE stdout_pipe_source = CreateNamedPipe((pipe_name + L"stdout").c_str(), PIPE_ACCESS_INBOUND | FILE_FLAG_OVERLAPPED,
+            PIPE_TYPE_BYTE | PIPE_REJECT_REMOTE_CLIENTS, 1, 1024*32, 1024*32, 0, NULL);
+        HANDLE stdout_pipe_sink = CreateFile((pipe_name + L"stdout").c_str(), GENERIC_WRITE, 0, NULL,
+            OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+        auto stdout_sink = file_descriptor_sink(stdout_pipe_sink, never_close_handle);
+        auto stdout_pend = std::make_shared<process::pipe_end>(service, stdout_pipe_source);
+
+        HANDLE stderr_pipe_source = CreateNamedPipe((pipe_name + L"stderr").c_str(), PIPE_ACCESS_INBOUND | FILE_FLAG_OVERLAPPED,
+            PIPE_TYPE_BYTE | PIPE_REJECT_REMOTE_CLIENTS, 1, 1024*32, 1024*32, 0, NULL);
+        HANDLE stderr_pipe_sink = CreateFile((pipe_name + L"stderr").c_str(), GENERIC_WRITE, 0, NULL,
+            OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+        auto stderr_sink = file_descriptor_sink(stderr_pipe_sink, never_close_handle);
+        auto stderr_pend = std::make_shared<process::pipe_end>(service, stderr_pipe_source);
     #else
         #error "Unknown platform."
     #endif
 
     std::vector<std::string> env;
     const char* ptr;
+    // The list of env vars contains unnecessary entries, but they don't hurt
+    // at all, so I'm not going to clean it.
     for(auto i : { // <3 c++11
+
+            // Posix vars
             "MANPATH",
             "DM_CONTROL",
             "SHELL",
@@ -56,26 +94,99 @@ void ProcessRunner::run() {
             "WINDOWPATH",
             "PROFILEHOME",
             "DISPLAY",
+
+            // Windows vars
+            "ALLUSERSPROFILE",
+            "APPDATA",
+            "CommonProgramFiles",
+            "COMPUTERNAME",
+            "ComSpec",
+            "FP_NO_HOST_CHECK",
+            "HOMEDRIVE",
+            "HOMEPATH",
+            "LOCALAPPDATA",
+            "LOGONSERVER",
+            "NUMBER_OF_PROCESSORS",
+            "OS",
+            "PATHEXT",
+            "PROCESSOR_ARCHITECTURE",
+            "PROCESSOR_IDENTIFIER",
+            "PROCESSOR_LEVEL",
+            "PROCESSOR_REVISION",
+            "ProgramData",
+            "ProgramFiles",
+            "PROMPT",
+            "PSModulePath",
+            "PUBLIC",
+            "SystemDrive",
+            "SystemRoot",
+            "TEMP",
+            "TMP",
+            "USERDOMAIN",
+            "USERNAME",
+            "USERPROFILE",
+            "windir",
+            "__COMPAT_LAYER",
+
             }) {
         if((ptr = std::getenv(i)))
             env.push_back(i + std::string("=") + std::string(ptr));
     }
     env.push_back("OMP_WAIT_POLICY=ACTIVE"); // not sure what this is for.
+    #ifdef BOOST_WINDOWS_API
+        typedef std::vector<std::wstring> wrange;
+        wrange wargs, wenv;
+        for(auto i : args)
+            wargs.push_back(std::wstring(i.begin(), i.end()));
+        for(auto i : env)
+            wenv.push_back(std::wstring(i.begin(), i.end()));
+    #endif
 
     try {
-        auto child = process::execute(
-            set_args(args), // TODO: on Windows it needs a std::wstring range type in a Unicode build.
-            set_env(env), // This one too.
-            bind_stdout(stdout_sink),
-            bind_stderr(stderr_sink),
-            close_stdin(),
-            #ifdef BOOST_POSIX_API
-                notify_io_service(service),
-            #endif
-            hide_console(),
-            throw_on_error()
-        );
-        terminate_func = [child]() { process::terminate(child); };
+        std::exception_ptr e_ptr;
+        waitForExitThread = boost::thread([=, this, &e_ptr](){
+            try {
+                auto child = process::execute(
+                    #if defined BOOST_POSIX_API
+                        set_args(args),
+                        set_env(env),
+                    #elif defined BOOST_WINDOWS_API
+                        set_args(wargs),
+                        set_env(wenv),
+                    #endif
+                    bind_stdout(stdout_sink),
+                    bind_stderr(stderr_sink),
+                    close_stdin(),
+                    #ifdef BOOST_POSIX_API
+                        notify_io_service(service),
+                    #endif
+                    hide_console(),
+                    throw_on_error()
+                );
+                #if defined BOOST_POSIX_API
+                    terminate_func = [child]() { process::terminate(child); };
+                #elif defined BOOST_WINDOWS_API
+                    HANDLE native_handle = child.process_handle();
+                    terminate_func = [native_handle]() { TerminateProcess(native_handle, EXIT_FAILURE); };
+                #endif
+                // Now who would have guessed that calling WaitForSingleObject() on a process
+                // in a thread other than the thread where you created the process doesn't work?
+                // Certainly not MSDN docs, that's for sure. No mention of that there.
+                // Man I hate WinAPI.
+                process::wait_for_exit(child);
+                service.stop();
+                QCoreApplication::postEvent(eventReceiver, new TerminateEvent(cmd));
+                #ifdef BOOST_WINDOWS_API
+                    for(auto i : { stdout_pipe_source, stdout_pipe_sink, stderr_pipe_source, stderr_pipe_sink })
+                        CloseHandle(i);
+                #endif
+
+            } catch(...) {
+                e_ptr = std::current_exception();
+            }
+        });
+        if(waitForExitThread.try_join_for(boost::chrono::milliseconds(100)))
+            std::rethrow_exception(e_ptr);
     } catch(boost::system::system_error e) {
         throw e;
     }
@@ -95,7 +206,7 @@ void ProcessRunner::run() {
             std::string msg;
             std::getline(is, msg);
             QCoreApplication::postEvent(eventReceiver, new ReadEvent(cmd, msg));
-            asio::async_read_until(*stdout_pend, *stdoutBuf, '\n', *onRead);
+            asio::async_read_until(*stdout_pend, *stdoutBuf, &matchNewline, *onRead);
         }
     };
     *onErrRead = [=](const boost::system::error_code& ec, std::size_t bytes){
@@ -104,48 +215,36 @@ void ProcessRunner::run() {
             std::string msg;
             std::getline(is, msg);
             QCoreApplication::postEvent(eventReceiver, new ReadEvent(cmd, msg));
-            asio::async_read_until(*stderr_pend, *stderrBuf, '\n', *onErrRead);
+            asio::async_read_until(*stderr_pend, *stderrBuf, &matchNewline, *onErrRead);
         }
     };
-    asio::async_read_until(*stdout_pend, *stdoutBuf, '\n', *onRead);
-    asio::async_read_until(*stderr_pend, *stderrBuf, '\n', *onErrRead);
+    asio::async_read_until(*stdout_pend, *stdoutBuf, &matchNewline, *onRead);
+    asio::async_read_until(*stderr_pend, *stderrBuf, &matchNewline, *onErrRead);
 
-    #if defined BOOST_POSIX_API
-        asio::signal_set set(service, SIGCHLD);
-        set.async_wait([=](const boost::system::error_code& ec, const int& _){
-            QCoreApplication::postEvent(eventReceiver, new TerminateEvent(cmd));
-        });
-    #elif defined BOOST_WINDOWS_API
-        #error "Not implemented yet."
-    #else
-        #error "Unknown platform."
-    #endif
-
-    thread = boost::thread(boost::bind(&ProcessRunner::runService, this));
+    runServiceThread = boost::thread(boost::bind(&ProcessRunner::runService, this));
 }
 
 void ProcessRunner::terminate() {
     try {
         terminate_func();
     } catch(boost::system::system_error e) {
-        throw e;
+        ; // who cares
     }
 }
 
 ProcessRunner::~ProcessRunner() {
-    if(thread.joinable())
-        thread.join();
+    service.stop();
+    if(runServiceThread.joinable())
+        runServiceThread.join();
+    if(waitForExitThread.joinable())
+        waitForExitThread.join();
 }
 
 ProcessRunner::ProcessRunner(QObject* eventReceiver, const std::string& cmd,
         const std::vector<std::string>& args) : eventReceiver(eventReceiver), cmd(cmd), args(args) {
 }
 
-ProcessRunner::ProcessRunner(ProcessRunner&& p) : eventReceiver(p.eventReceiver), cmd(p.cmd), args(p.args),
-        terminate_func(p.terminate_func) {
-    p.terminate_func = [](){};
-    thread = std::move(p.thread);
-}
+ProcessRunner::ProcessRunner(ProcessRunner&& p) : eventReceiver(p.eventReceiver), cmd(p.cmd), args(p.args) {}
 
 void ProcessRunner::runService() {
     service.run();
