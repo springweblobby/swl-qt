@@ -123,6 +123,7 @@ private:
     std::string os;
     std::string springHome;
     Logger logger;
+    bool debugNetwork, debugCommands;
     NetworkHandler network;
     QWebFrame* frame;
     std::map<std::string, UnitsyncHandler> unitsyncs;

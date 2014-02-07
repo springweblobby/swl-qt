@@ -13,10 +13,24 @@
 namespace fs = boost::filesystem;
 
 LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
-        QObject(parent), springHome(""), network(this, logger), frame(frame) {
+        QObject(parent), springHome(""), debugNetwork(false), debugCommands(false),
+        network(this, logger), frame(frame) {
     logger.setEventReceiver(this);
     auto args = QCoreApplication::arguments();
-    logger.setDebug(args.contains("-debug"));
+    if (args.contains("-debug-all")) {
+        debugNetwork = debugCommands = true;
+        logger.setDebug(true);
+    }
+    if (args.contains("-debug-net")) {
+        debugNetwork = true;
+        logger.setDebug(true);
+    }
+    if (args.contains("-debug-cmd")) {
+        debugCommands = true;
+        logger.setDebug(true);
+    }
+    if (args.contains("-debug"))
+        logger.setDebug(true);
 }
 
 void LobbyInterface::init() {
@@ -106,11 +120,15 @@ bool LobbyInterface::event(QEvent* evt) {
 }
 
 void LobbyInterface::jsMessage(std::string source, int lineNumber, std::string message) {
-    if (message.find("<TASSERVER>") == std::string::npos &&
-        message.find("<LOCAL>") == std::string::npos) {
-        logger.warning(source, ":", lineNumber, " ", message);
+    if (message.find("<TASSERVER>") != std::string::npos ||
+            message.find("<LOCAL>") != std::string::npos) {
+        if (debugNetwork)
+            logger.debug(message);
+    } else if (message.find("<CMD>") != std::string::npos) {
+        if (debugCommands)
+            logger.debug(message);
     } else {
-        logger.debug(message);
+        logger.warning(source, ":", lineNumber, " ", message);
     }
 }
 
