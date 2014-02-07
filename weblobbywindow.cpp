@@ -32,8 +32,12 @@ WebLobbyWindow::WebLobbyWindow(QWidget *parent) : QMainWindow(parent) {
     connect(view, SIGNAL(loadProgress(int)), SLOT(setProgress(int)));
     connect(view, SIGNAL(loadFinished(bool)), SLOT(finishLoading(bool)));
 
-    view->load(QUrl("http://weblobby.springrts.com/test-qtcpp/index.html"));
-    //view->load(QUrl("file:///D:/mingw32/msys/1.0/home/user/qtswl/site/index.html"));
+    auto args = QCoreApplication::arguments();
+    if (args.contains("-url") && args.indexOf("-url") + 1 < args.length())
+        view->load(QUrl(args[args.indexOf("-url") + 1]));
+    else
+        view->load(QUrl("http://weblobby.springrts.com/test-qtcpp/index.html"));
+
     connect(view->page()->mainFrame(), SIGNAL(javaScriptWindowObjectCleared()),
             this, SLOT(addJSObject()));
 
