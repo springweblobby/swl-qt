@@ -52,8 +52,6 @@ void ProcessRunner::run() {
             OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
         auto stderr_sink = file_descriptor_sink(stderr_pipe_sink, never_close_handle);
         auto stderr_pend = std::make_shared<process::pipe_end>(service, stderr_pipe_source);
-    #else
-        #error "Unknown platform."
     #endif
 
     std::vector<std::string> env;
@@ -133,6 +131,7 @@ void ProcessRunner::run() {
             env.push_back(i + std::string("=") + std::string(ptr));
     }
     env.push_back("OMP_WAIT_POLICY=ACTIVE"); // not sure what this is for.
+
     #ifdef BOOST_WINDOWS_API
         typedef std::vector<std::wstring> wrange;
         wrange wargs, wenv;
@@ -173,7 +172,8 @@ void ProcessRunner::run() {
                 // in a thread other than the thread where you created the process doesn't work?
                 // Certainly not MSDN docs, that's for sure. No mention of that there.
                 // Man I hate WinAPI.
-                process::wait_for_exit(child);
+                boost::system::error_code ec;
+                process::wait_for_exit(child, ec);
                 service.stop();
                 QCoreApplication::postEvent(eventReceiver, new TerminateEvent(cmd));
                 #ifdef BOOST_WINDOWS_API
@@ -185,7 +185,7 @@ void ProcessRunner::run() {
                 e_ptr = std::current_exception();
             }
         });
-        if(waitForExitThread.try_join_for(boost::chrono::milliseconds(100)))
+        if(waitForExitThread.try_join_for(boost::chrono::milliseconds(100)) && e_ptr)
             std::rethrow_exception(e_ptr);
     } catch(boost::system::system_error e) {
         throw e;
