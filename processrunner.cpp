@@ -92,6 +92,8 @@ void ProcessRunner::run() {
             "WINDOWPATH",
             "PROFILEHOME",
             "DISPLAY",
+            "LD_LIBRARY_PATH",
+            "QT_PLUGIN_PATH",
 
             // Windows vars
             "ALLUSERSPROFILE",
@@ -163,7 +165,7 @@ void ProcessRunner::run() {
                     throw_on_error()
                 );
                 #if defined BOOST_POSIX_API
-                    terminate_func = [child]() { process::terminate(child); };
+                    terminate_func = [child]() { boost::system::error_code ec; process::terminate(child, ec); };
                 #elif defined BOOST_WINDOWS_API
                     HANDLE native_handle = child.process_handle();
                     terminate_func = [native_handle]() { TerminateProcess(native_handle, EXIT_FAILURE); };

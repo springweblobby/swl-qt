@@ -266,12 +266,13 @@ void LobbyInterface::runCommand(QString qcmdName, QStringList cmd) {
         std::vector<std::string> args;
         for(auto i : cmd)
             args.push_back(i.toStdString());
+        auto it = processes.insert(std::make_pair(cmdName, ProcessRunner(this, cmdName, args))).first;
         logger.info("Running command (", cmdName, "):\n", cmd.join(" ").toStdString());
         try {
-            processes.insert(std::make_pair(cmdName, ProcessRunner(this, cmdName, args))).
-                first->second.run();
+            it->second.run();
         } catch(boost::system::system_error e) {
             logger.error("Cannot start command: ", cmdName, ": ", e.what());
+            processes.erase(it);
         }
     }
 }
