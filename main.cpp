@@ -6,7 +6,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     WebLobbyWindow webLobbyWindow;
-    webLobbyWindow.show();
+    webLobbyWindow.showMaximized();
 
     return app.exec();
 }

@@ -3,6 +3,7 @@
 #include "weblobbywindow.h"
 #include <iostream>
 #include <QtNetwork>
+#include <QDesktopServices>
 
 
 void MyPage::javaScriptConsoleMessage(const QString& message, int lineNumber,
@@ -12,7 +13,6 @@ void MyPage::javaScriptConsoleMessage(const QString& message, int lineNumber,
 }
 
 WebLobbyWindow::WebLobbyWindow(QWidget *parent) : QMainWindow(parent) {
-    resize(1280, 800);
     progress = 0;
     lobbyInterface = NULL;
 
@@ -20,6 +20,7 @@ WebLobbyWindow::WebLobbyWindow(QWidget *parent) : QMainWindow(parent) {
 
     view = new QWebView(this);
     view->setPage(new MyPage(view, &lobbyInterface)); // dat hax
+    view->page()->setLinkDelegationPolicy(QWebPage::DelegateAllLinks);
     setCentralWidget(view);
     setUnifiedTitleAndToolBarOnMac(true);
 
@@ -40,6 +41,9 @@ WebLobbyWindow::WebLobbyWindow(QWidget *parent) : QMainWindow(parent) {
 
     connect(view->page()->mainFrame(), SIGNAL(javaScriptWindowObjectCleared()),
             this, SLOT(addJSObject()));
+    connect(view, &QWebView::linkClicked, [](const QUrl& url){
+        QDesktopServices::openUrl(url);
+    });
 
 
     /*viewer.setOrientation(Html5ApplicationViewer::ScreenOrientationAuto);
