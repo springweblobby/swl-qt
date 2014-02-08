@@ -305,6 +305,13 @@ void LobbyInterface::writeToFile(QString path, QString line) {
     out << line.toStdString() << std::endl;
 }
 
+void LobbyInterface::playSound(QString url) {
+    if (mediaPlayer.state() != QMediaPlayer::StoppedState)
+        return;
+    mediaPlayer.setMedia(QUrl(url));
+    mediaPlayer.play();
+}
+
 
 /* TODO: replace with a function to get replay info because that's how
  * ReadFileMore() was used anyway.

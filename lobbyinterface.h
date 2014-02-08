@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QEvent>
 #include <QStringList>
+#include <QMediaPlayer>
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 #include <boost/process.hpp>
@@ -113,6 +114,8 @@ public slots:
     long getUserID();
     int sendSomePacket(QString host, unsigned int port, QString msg);
 
+    void playSound(QString url);
+
     QString getSpringHome();
     void setSpringHome(QString path);
 private:
@@ -125,6 +128,7 @@ private:
     Logger logger;
     bool debugNetwork, debugCommands;
     NetworkHandler network;
+    QMediaPlayer mediaPlayer;
     QWebFrame* frame;
     std::map<std::string, UnitsyncHandler> unitsyncs;
     std::map<std::string, ProcessRunner> processes;

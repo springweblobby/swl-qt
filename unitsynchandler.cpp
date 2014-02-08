@@ -357,6 +357,8 @@ UnitsyncHandler::UnitsyncHandler(QObject* parent, Logger& logger, std::string pa
         fptr_GetPrimaryModShortGame = (fptr_type_GetPrimaryModShortGame)GetProcAddress((HMODULE)handle, "GetPrimaryModShortGame");
         fptr_GetPrimaryModDescription = (fptr_type_GetPrimaryModDescription)GetProcAddress((HMODULE)handle, "GetPrimaryModDescription");
         fptr_OpenArchiveType = (fptr_type_OpenArchiveType)GetProcAddress((HMODULE)handle, "OpenArchiveType");
+
+        ready = true;
     #else
         #error "Unknown target OS."
     #endif

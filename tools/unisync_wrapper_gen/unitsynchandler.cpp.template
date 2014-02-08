@@ -35,6 +35,8 @@ UnitsyncHandler::UnitsyncHandler(QObject* parent, Logger& logger, std::string pa
         }
 
         ${fptr_initialization_windows}
+
+        ready = true;
     #else
         #error "Unknown target OS."
     #endif
