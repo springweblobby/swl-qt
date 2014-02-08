@@ -19,7 +19,7 @@ UnitsyncHandler::UnitsyncHandler(QObject* parent, Logger& logger, std::string pa
     #if defined Q_OS_LINUX || defined Q_OS_MAC
         handle = dlopen(path.c_str(), RTLD_LAZY | RTLD_LOCAL);
         if(handle == NULL) {
-            logger.error("Could not load unitsync at ", path, ": ", dlerror());
+            logger.warning("Could not load unitsync at ", path, ": ", dlerror());
             return;
         }
 
@@ -191,7 +191,7 @@ UnitsyncHandler::UnitsyncHandler(QObject* parent, Logger& logger, std::string pa
         handle = LoadLibraryEx(std::wstring(path.begin(), path.end()).c_str(), NULL,
             LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR);
         if(handle == NULL) {
-            logger.error("Could not load unitsync at ", path, ": ", GetLastError());
+            logger.warning("Could not load unitsync at ", path, ": ", GetLastError());
             return;
         }
 

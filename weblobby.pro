@@ -1,6 +1,6 @@
 greaterThan(QT_MAJOR_VERSION, 4):QT += widgets webkitwidgets
 CONFIG += c++11
-CONFIG += debug
+#CONFIG += debug
 
 SOURCES += main.cpp \
     weblobbywindow.cpp \
