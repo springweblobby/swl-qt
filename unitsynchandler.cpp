@@ -1026,7 +1026,7 @@ int UnitsyncHandler::getPrimaryModIndex(QString name) {
     logger.debug("call GetPrimaryModIndex(", name.toStdString().c_str(), ")");
     return fptr_GetPrimaryModIndex(name.toStdString().c_str());
 }
-unsigned int UnitsyncHandler::getPrimaryModChecksum(int index) {
+long UnitsyncHandler::getPrimaryModChecksum(int index) {
     if (fptr_GetPrimaryModChecksum == NULL) {
         logger.error("Bad function pointer: GetPrimaryModChecksum");
         throw bad_fptr("GetPrimaryModChecksum");

@@ -91,7 +91,7 @@ public slots:
     int getPrimaryModArchiveCount(int);
     QString getPrimaryModArchiveList(int);
     int getPrimaryModIndex(QString);
-    unsigned int getPrimaryModChecksum(int);
+    long getPrimaryModChecksum(int);
     unsigned int getPrimaryModChecksumFromName(QString);
     int getSideCount();
     QString getSideName(int);
