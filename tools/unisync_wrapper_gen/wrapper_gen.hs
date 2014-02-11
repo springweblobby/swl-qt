@@ -21,6 +21,7 @@ marshallOut _ name = name
 
 getExternalRep :: CType -> CType
 getExternalRep CString = QString
+getExternalRep CUint = CLong
 getExternalRep t = t
 
 putTemplate :: [CFunc] -> ByteString -> [ByteString]
@@ -93,12 +94,13 @@ commaList xs = foldr1 (\a b -> a <> ", " <> b) xs
 
 data CFunc = CFunc CType ByteString [Arg] deriving(Show)
 data Arg = Arg ByteString CType deriving(Show)
-data CType = CVoid | CUint | CInt | CBool | CFloat | CString | QString | CUnknown ByteString deriving(Show)
+data CType = CVoid | CUint | CInt | CLong | CBool | CFloat | CString | QString | CUnknown ByteString deriving(Show)
 
 showCType :: CType -> ByteString
 showCType CVoid = "void"
 showCType CUint = "unsigned int"
 showCType CInt = "int"
+showCType CLong = "long"
 showCType CBool = "bool"
 showCType CFloat = "float"
 showCType CString = "const char*"

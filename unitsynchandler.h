@@ -49,7 +49,7 @@ public slots:
     void addArchive(QString);
     void addAllArchives(QString);
     void removeAllArchives();
-    unsigned int getArchiveChecksum(QString);
+    long getArchiveChecksum(QString);
     QString getArchivePath(QString);
     int getMapCount();
     QString getMapName(int);
@@ -73,8 +73,8 @@ public slots:
     float getMapMaxHeight(QString);
     int getMapArchiveCount(QString);
     QString getMapArchiveName(int);
-    unsigned int getMapChecksum(int);
-    unsigned int getMapChecksumFromName(QString);
+    long getMapChecksum(int);
+    long getMapChecksumFromName(QString);
     int getSkirmishAICount();
     int getSkirmishAIInfoCount(int);
     QString getInfoKey(int);
@@ -92,7 +92,7 @@ public slots:
     QString getPrimaryModArchiveList(int);
     int getPrimaryModIndex(QString);
     long getPrimaryModChecksum(int);
-    unsigned int getPrimaryModChecksumFromName(QString);
+    long getPrimaryModChecksumFromName(QString);
     int getSideCount();
     QString getSideName(int);
     QString getSideStartUnit(int);

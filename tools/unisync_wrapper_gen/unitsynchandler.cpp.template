@@ -1,4 +1,5 @@
 #include "unitsynchandler.h"
+#include <cstdio> // good ol' snprintf
 #if defined Q_OS_LINUX || defined Q_OS_MAC
     #include <dlfcn.h>
 #elif defined Q_OS_WIN32
@@ -64,17 +65,27 @@ UnitsyncHandler::UnitsyncHandler(UnitsyncHandler&& h) : QObject(h.parent()),
 
 // Returns a %-escaped string ready for use in a data URL.
 QString UnitsyncHandler::jsReadFileVFS(int fd, int size) {
-    char buf[size + sizeof(int)];
-    if (fptr_ReadFileVFS(fd, (unsigned char*)buf, size) != size)
+    // An astute reader might ask at this point "But ikinz, why in the world do you need that offset?"
+    // It turns out that on mingw from mingw-builds v4.8.1-posix-dwarf-rev5 using qt-5.2.0 in this very
+    // functions suddenly appears an unknown and unstoppable force that overwrites the first few bytes
+    // of readBuf with foul garbage. I spent a day in vain trying to discern its origins, but the force
+    // evaded the grasp of my sleep-deprived mind and humored me when I tried to allocate readBuf
+    // dynamically by causing a segfault in metacall. So I decided to submit to it and let it overwrite
+    // my buffers all it wants as long as it stays within the boundaries set by the offset.
+    //
+    // On a more serious note that's likely some obscure moc bug that also probably has something with
+    // threading since it segfaulted in a different thread. Whatever, faction icons seem to work on
+    // Windows now so I'm happy.
+    const int off = 100;
+    unsigned char readBuf[size + off];
+    if (fptr_ReadFileVFS(fd, readBuf + off, size) != size)
         logger.warning("ReadFileVFS(): size mismatch");
-    QString res, tmp;
+    fptr_CloseFileVFS(fd);
+    QString res;
+    char tmp[8];
     for (int i = 0; i < size; i++) {
-        // %X converts an unsigned int into hex representation and we take the
-	// last 2 characters to get the byte value.
-        tmp = tmp.sprintf("%X", buf[i]).right(2);
-	if (tmp.length() == 1)
-            tmp = "0" + tmp;
-	res += "%" + tmp;
+        std::snprintf(tmp, 8, "%%%.2hhX", readBuf[i + off]);
+        res += QString(tmp);
     }
     return res;
 }
