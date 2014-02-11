@@ -1,0 +1,16 @@
+This is a compilation of bugs that have workarounds but have largely unknown
+cause. The idea is that someday someone with some spare time on their hands
+(i.e. no one) will look into them and figure out what's actually going on.
+
+
+= GHOSTS OVERWRITING BUFFER =
+
+Something overwrites the buffer in UnitsyncHandler::jsReadFileVFS() on my
+machine. Read the implementation of the function for a short essay on the
+subject. That's by far the weirdest bug in the list.
+
+= GHOSTS MURDERING GSTREAMER =
+
+On linux on my machine trying to use gstreamer in the main app fails even if
+you put the gstreamer code in main() and don't initialize QT at all. Currently
+there's a workaround with a secondary app being used to play sounds.

@@ -31,6 +31,13 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
     }
     if (args.contains("-debug"))
         logger.setDebug(true);
+
+    #ifdef Q_OS_LINUX
+        char buf[1024];
+        readlink("/proc/self/exe", buf, 1024);
+        gstreamerPlayPath = dirname(buf);
+        gstreamerPlayPath += "/lib/gstreamer_play";
+    #endif
 }
 
 void LobbyInterface::init() {
@@ -306,10 +313,14 @@ void LobbyInterface::writeToFile(QString path, QString line) {
 }
 
 void LobbyInterface::playSound(QString url) {
-    if (mediaPlayer.state() != QMediaPlayer::StoppedState)
-        return;
-    mediaPlayer.setMedia(QUrl(url));
-    mediaPlayer.play();
+    #if defined Q_OS_WIN32 || defined Q_OS_MAC
+        if (mediaPlayer.state() != QMediaPlayer::StoppedState)
+            return;
+        mediaPlayer.setMedia(QUrl(url));
+        mediaPlayer.play();
+    #elif defined Q_OS_LINUX
+        runCommand("gstreamer_play", {gstreamerPlayPath, url});
+    #endif
 }
 
 
@@ -350,6 +361,7 @@ std::string LobbyInterface::escapeJs(const std::string& str) {
     std::string res = "";
     for(char c : str) {
         if(c == '\'') res += "\\'";
+        else if(c == '\\') res += "\\\\";
         else if(c == '"') res += "\\\"";
         else if(c == '\n') res += "\\n";
         else if(c == '\r') res += "\\r";

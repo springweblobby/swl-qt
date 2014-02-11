@@ -6,7 +6,12 @@
 #include <QObject>
 #include <QEvent>
 #include <QStringList>
-#include <QMediaPlayer>
+#if defined Q_OS_WIN32 || defined Q_OS_MAC
+    #include <QMediaPlayer>
+#elif defined Q_OS_LINUX
+    #include <unistd.h>
+    #include <libgen.h>
+#endif
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 #include <boost/process.hpp>
@@ -128,7 +133,12 @@ private:
     Logger logger;
     bool debugNetwork, debugCommands;
     NetworkHandler network;
-    QMediaPlayer mediaPlayer;
+    #if defined Q_OS_WIN32 || defined Q_OS_MAC
+        QMediaPlayer mediaPlayer;
+    #elif defined Q_OS_LINUX
+        QString gstreamerPlayPath;
+    #endif
+
     QWebFrame* frame;
     std::map<std::string, UnitsyncHandler> unitsyncs;
     std::map<std::string, ProcessRunner> processes;
