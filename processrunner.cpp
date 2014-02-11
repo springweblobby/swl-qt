@@ -94,6 +94,7 @@ void ProcessRunner::run() {
             "DISPLAY",
             "LD_LIBRARY_PATH",
             "QT_PLUGIN_PATH",
+            "GST_PLUGIN_PATH",
 
             // Windows vars
             "ALLUSERSPROFILE",

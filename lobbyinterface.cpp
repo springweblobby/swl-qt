@@ -36,7 +36,7 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
         char buf[1024];
         readlink("/proc/self/exe", buf, 1024);
         gstreamerPlayPath = dirname(buf);
-        gstreamerPlayPath += "/lib/gstreamer_play";
+        gstreamerPlayPath += "/gstreamer_play";
     #endif
 }
 
