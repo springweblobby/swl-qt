@@ -1,4 +1,5 @@
-#include "lobbyinterface.h" // Must be included first.
+// On mingw lobbyinterface.h must be included first or you'll get compilation errors.
+#include "lobbyinterface.h"
 
 #include "weblobbywindow.h"
 #include <iostream>
@@ -44,11 +45,6 @@ WebLobbyWindow::WebLobbyWindow(QWidget *parent) : QMainWindow(parent) {
     connect(view, &QWebView::linkClicked, [](const QUrl& url){
         QDesktopServices::openUrl(url);
     });
-
-
-    /*viewer.setOrientation(Html5ApplicationViewer::ScreenOrientationAuto);
-    viewer.showExpanded();
-    viewer.loadUrl(QUrl(QLatin1String("http://weblobby.springrts.com/desktop/index.html")));*/
 }
 
 void WebLobbyWindow::viewSource() {
