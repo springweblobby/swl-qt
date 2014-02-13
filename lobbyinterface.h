@@ -115,7 +115,7 @@ public slots:
     void connect(QString host, unsigned int port);
     void disconnect();
     void send(QString msg);
-    bool downloadFile(QString source, QString target);
+    bool downloadFile(QString url, QString target);
     long getUserID();
     int sendSomePacket(QString host, unsigned int port, QString msg);
 

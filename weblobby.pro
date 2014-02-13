@@ -19,7 +19,7 @@ HEADERS += \
 INCLUDEPATH += Boost.Process-0.5
 
 unix {
-    LIBS += -lboost_filesystem -lboost_system -lboost_thread -lboost_iostreams -lboost_chrono
+    LIBS += -lboost_filesystem -lboost_system -lboost_thread -lboost_iostreams -lboost_chrono -lcurl
 }
 win32 {
     LIBS += -Ld:/mingw32/lib -lboost_filesystem-mgw48-mt-1_55 -lboost_system-mgw48-mt-1_55 -lboost_thread-mgw48-mt-1_55 -lboost_iostreams-mgw48-mt-1_55 -lboost_chrono-mgw48-mt-1_55

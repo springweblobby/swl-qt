@@ -8,8 +8,14 @@
 #include <QStandardPaths>
 #include <boost/filesystem.hpp>
 #include <boost/crc.hpp>
+#include <boost/chrono.hpp>
+#include <curl/curl.h>
 #include <fstream>
+#include <ctime>
 #include <deque>
+#if defined Q_OS_LINUX || defined Q_OS_MAC
+    #include <sys/stat.h> // chmod()
+#endif
 namespace fs = boost::filesystem;
 
 LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
@@ -196,43 +202,68 @@ QString LobbyInterface::readFileLess(QString path, unsigned int lines) {
     return res;
 }
 
-bool LobbyInterface::downloadFile(QString source, QString target) {
-    return true;
-    // TODO
-    /*try {
-        System.out.println("Copy file: " + source + " > " + target );
-        URLConnection dl = new URL( source ).openConnection();
-        dl.setUseCaches(false);
+size_t static write_data(void* buf, size_t size, size_t mult, void* file) {
+    ((std::ofstream*)file)->write((const char*)buf, size * mult);
+    return size * mult;
+}
+bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
+    auto url = qurl.toStdString();
+    auto target = qtarget.toStdString();
+    logger.debug("downloadFile(): ", url, " => ", target);
+    auto handle = curl_easy_init();
+    curl_slist* hlist = NULL;
 
-        File f = new File(target);
-        dl.setIfModifiedSince( f.lastModified() );
-
-        if (dl.getContentLength() <= 0) {
-            System.out.println("File not modified, using cache");
-            return true;
-        }
-
-        ReadableByteChannel rbc = Channels.newChannel(dl.getInputStream());
-
-        FileOutputStream fos = new FileOutputStream(target);
-        fos.getChannel().transferFrom(rbc, 0, 1 << 24);
-        //System.out.println(fos.getChannel().size());
-        fos.close();
-        rbc.close();
-
-        if (target.endsWith("pr-downloader")) {
-            CLibrary libc = (CLibrary) Native.loadLibrary("c", CLibrary.class); //breaks applet on windows
-            //Path targetFile = Paths.get(target); // fails on Linux
-            //Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwxr-x---");
-            //Files.setPosixFilePermissions(targetFile, perms);
-
-            libc.chmod(target, 0750);
-        }
-
-    } catch (Exception e)	{
-        e.printStackTrace();
+    if (fs::exists({ target })) {
+        auto lastM_ = fs::last_write_time({ target });
+        auto lastM = std::gmtime(&lastM_);
+        std::ostringstream ss;
+        auto curLocale = std::locale();
+        std::locale::global(std::locale("C"));
+        char httpDate[50];
+        std::strftime(httpDate, 50, "%a, %d %b %Y %H:%M:%S %Z", lastM);
+        logger.debug("downloadFile(): last modified on ", httpDate);
+        hlist = curl_slist_append(hlist, ("If-Modified-Since: " + std::string(httpDate)).c_str());
+        curl_easy_setopt(handle, CURLOPT_HTTPHEADER, hlist);
     }
-    return true;*/
+
+    auto tempFile = fs::temp_directory_path();
+    tempFile += "/weblobby_dl";
+    std::ofstream fo(tempFile.native(), std::ios_base::binary | std::ios_base::out);
+    if (!fo.is_open() || !fo.good()) {
+        logger.error("downloadFile(): can't open file: ", tempFile.native());
+        return false;
+    }
+
+    curl_easy_setopt(handle, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(handle, CURLOPT_WRITEDATA, &fo);
+    curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_data);
+
+    CURLcode err;
+    if ((err = curl_easy_perform(handle)) != 0) {
+        logger.error("downloadFile(): can't download file: ", url, " => ", target, ": ", curl_easy_strerror(err));
+        return false;
+    }
+    if (hlist)
+        curl_slist_free_all(hlist);
+    curl_easy_cleanup(handle);
+    if (fo.tellp() > 0) {
+        fo.close();
+        // Can't use due to a linking error, see http://tinyurl.com/p2tuaft
+        //fs::copy_file(tempFile, { target });
+        std::ifstream src(tempFile.native(), std::ios::binary);
+        std::ofstream dst(target, std::ios::binary);
+        dst << src.rdbuf();
+        src.close();
+        dst.close();
+        #if defined Q_OS_LINUX || defined Q_OS_MAC
+            if (target.find("pr-downloader") != std::string::npos)
+                chmod(target.c_str(), S_IRWXU | S_IRWXG | S_IROTH);
+        #endif
+        logger.debug("downloadFile(): finished.");
+    } else {
+        logger.debug("downloadFile(): not modified, using the cached version");
+    }
+    return true;
 }
 
 QObject* LobbyInterface::getUnitsync(QString qpath) {
@@ -244,7 +275,7 @@ QObject* LobbyInterface::getUnitsync(QString qpath) {
     if (unitsyncs.find(path)->second.isReady())
         return &(unitsyncs.find(path)->second);
     else {
-        logger.error("Unitsync not loaded at ", path);
+        logger.warning("Unitsync not loaded at ", path);
         return NULL;
     }
 }
