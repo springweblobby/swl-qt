@@ -276,6 +276,7 @@ QObject* LobbyInterface::getUnitsync(QString qpath) {
         return &(unitsyncs.find(path)->second);
     else {
         logger.warning("Unitsync not loaded at ", path);
+        unitsyncs.erase(unitsyncs.find(path));
         return NULL;
     }
 }
