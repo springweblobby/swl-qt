@@ -23,6 +23,6 @@ unix {
 }
 win32 {
     LIBS += -Ld:/mingw32/lib -lboost_filesystem-mgw48-mt-1_55 -lboost_system-mgw48-mt-1_55 -lboost_thread-mgw48-mt-1_55 -lboost_iostreams-mgw48-mt-1_55 -lboost_chrono-mgw48-mt-1_55
-    LIBS += -lws2_32 -lwsock32
+    LIBS += -lws2_32 -lwsock32 -lcurl
     LIBS += -Wl,-subsystem,console -mconsole
 }

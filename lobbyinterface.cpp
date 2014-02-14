@@ -13,6 +13,7 @@
 #include <fstream>
 #include <ctime>
 #include <deque>
+#include <algorithm>
 #if defined Q_OS_LINUX || defined Q_OS_MAC
     #include <sys/stat.h> // chmod()
 #endif
@@ -202,6 +203,20 @@ QString LobbyInterface::readFileLess(QString path, unsigned int lines) {
     return res;
 }
 
+int curl_debug(CURL* hnld, curl_infotype type, char* str, size_t size, void* plogger) {
+    Logger& logger = *(Logger*)plogger;
+    char buf[2048];
+    size = size > 2047 ? 2047 : size;
+    std::copy(str, str + size, buf);
+    buf[size] = '\0';
+    if (type == CURLINFO_TEXT)
+        logger.debug(buf);
+    else if (type == CURLINFO_HEADER_IN)
+        logger.debug("in: ", buf);
+    else if (type == CURLINFO_HEADER_OUT)
+        logger.debug("out: ", buf);
+    return 0;
+}
 size_t static write_data(void* buf, size_t size, size_t mult, void* file) {
     ((std::ofstream*)file)->write((const char*)buf, size * mult);
     return size * mult;
@@ -220,20 +235,25 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
         auto curLocale = std::locale();
         std::locale::global(std::locale("C"));
         char httpDate[50];
-        std::strftime(httpDate, 50, "%a, %d %b %Y %H:%M:%S %Z", lastM);
+        std::strftime(httpDate, 50, "%a, %d %b %Y %H:%M:%S GMT", lastM);
+        std::locale::global(curLocale);
         logger.debug("downloadFile(): last modified on ", httpDate);
         hlist = curl_slist_append(hlist, ("If-Modified-Since: " + std::string(httpDate)).c_str());
         curl_easy_setopt(handle, CURLOPT_HTTPHEADER, hlist);
     }
 
     auto tempFile = fs::temp_directory_path();
-    tempFile += "/weblobby_dl";
-    std::ofstream fo(tempFile.native(), std::ios_base::binary | std::ios_base::out);
+    tempFile += { "weblobby_dl" };
+    std::string tempFileStr(tempFile.native().begin(), tempFile.native().end());
+    std::ofstream fo(tempFileStr, std::ios::binary);
     if (!fo.is_open() || !fo.good()) {
-        logger.error("downloadFile(): can't open file: ", tempFile.native());
+        logger.error("downloadFile(): can't open file: ", tempFileStr);
         return false;
     }
 
+    /*curl_easy_setopt(handle, CURLOPT_VERBOSE, 1);
+    curl_easy_setopt(handle, CURLOPT_DEBUGFUNCTION, curl_debug); 
+    curl_easy_setopt(handle, CURLOPT_DEBUGDATA, &logger);*/
     curl_easy_setopt(handle, CURLOPT_URL, url.c_str());
     curl_easy_setopt(handle, CURLOPT_WRITEDATA, &fo);
     curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_data);
@@ -250,7 +270,7 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
         fo.close();
         // Can't use due to a linking error, see http://tinyurl.com/p2tuaft
         //fs::copy_file(tempFile, { target });
-        std::ifstream src(tempFile.native(), std::ios::binary);
+        std::ifstream src(tempFileStr, std::ios::binary);
         std::ofstream dst(target, std::ios::binary);
         dst << src.rdbuf();
         src.close();
