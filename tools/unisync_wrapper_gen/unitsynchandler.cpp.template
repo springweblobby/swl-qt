@@ -80,7 +80,6 @@ QString UnitsyncHandler::jsReadFileVFS(int fd, int size) {
     unsigned char readBuf[size + off];
     if (fptr_ReadFileVFS(fd, readBuf + off, size) != size)
         logger.warning("ReadFileVFS(): size mismatch");
-    fptr_CloseFileVFS(fd);
     QString res;
     char tmp[8];
     for (int i = 0; i < size; i++) {
