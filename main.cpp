@@ -8,6 +8,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     WebLobbyWindow webLobbyWindow;
+    webLobbyWindow.setWindowIcon(app.windowIcon());
     webLobbyWindow.showMaximized();
 
     auto exitCode = app.exec();
