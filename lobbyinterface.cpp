@@ -78,7 +78,7 @@ void LobbyInterface::init() {
         fs::create_directories({ weblobbyDir + "pr-downloader" });
         fs::create_directories({ weblobbyDir + "logs" });
         frame->page()->settings()->setLocalStoragePath(QString::fromStdString(weblobbyDir + "storage"));
-        logger.setLogFile(weblobbyDir + slash + "weblobby.log");
+        logger.setLogFile(weblobbyDir + "weblobby.log");
     } catch(fs::filesystem_error e) {
         logger.error("Creating folders failed with: ", e.what());
     }
