@@ -243,7 +243,7 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
     }
 
     auto tempFile = fs::temp_directory_path();
-    tempFile += { "weblobby_dl" };
+    tempFile += { "/weblobby_dl" };
     std::string tempFileStr(tempFile.native().begin(), tempFile.native().end());
     std::ofstream fo(tempFileStr, std::ios::binary);
     if (!fo.is_open() || !fo.good()) {
@@ -252,7 +252,7 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
     }
 
     /*curl_easy_setopt(handle, CURLOPT_VERBOSE, 1);
-    curl_easy_setopt(handle, CURLOPT_DEBUGFUNCTION, curl_debug); 
+    curl_easy_setopt(handle, CURLOPT_DEBUGFUNCTION, curl_debug);
     curl_easy_setopt(handle, CURLOPT_DEBUGDATA, &logger);*/
     curl_easy_setopt(handle, CURLOPT_URL, url.c_str());
     curl_easy_setopt(handle, CURLOPT_WRITEDATA, &fo);
