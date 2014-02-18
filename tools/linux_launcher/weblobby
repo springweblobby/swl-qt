@@ -1,0 +1,18 @@
+#!/bin/bash
+# You should have a folder named lib next to this script that contains the
+# actual executable and all the libs and qt and gst plugins.
+# Don't forget to chmod ug+x weblobby.desktop
+cd "`dirname $0`"
+if [ ! -d lib ]; then
+    echo "The lib folder is not found. Nothing to launch."
+    exit 1
+fi
+export LD_LIBRARY_PATH=$PWD/lib
+export QT_PLUGIN_PATH=$PWD/lib
+export GST_PLUGIN_PATH=$PWD/lib/gst
+if [ -f weblobby.desktop ]; then
+    sed -i -e "s,Icon=.*$,Icon=$PWD/lib/icon.png," weblobby.desktop
+    sed -i -e "s,Exec=.*$,Exec=$PWD/weblobby," weblobby.desktop
+fi
+cd lib
+exec ./weblobby $@
