@@ -15,4 +15,13 @@ if [ -f weblobby.desktop ]; then
     sed -i -e "s,Exec=.*$,Exec=$PWD/weblobby," weblobby.desktop
 fi
 cd lib
+if [ ! -d unused ]; then
+    echo -n "Checking deps..."
+    mkdir unused
+    for i in $(for i in `find . -type f -executable`; do LD_LIBRARY_PATH= ldd $i; done |
+            sed -e '/not /d;s/^[[:space:]]*\([^ ]*\).*$/\1/'); do
+        mv `basename $i` unused/ &> /dev/null
+    done
+    echo "Done."
+fi
 exec ./weblobby $@
