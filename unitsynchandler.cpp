@@ -700,7 +700,7 @@ void UnitsyncHandler::removeAllArchives() {
     logger.debug("call RemoveAllArchives(", ")");
     return fptr_RemoveAllArchives();
 }
-long UnitsyncHandler::getArchiveChecksum(QString archiveName) {
+int UnitsyncHandler::getArchiveChecksum(QString archiveName) {
     if (fptr_GetArchiveChecksum == NULL) {
         logger.error("Bad function pointer: GetArchiveChecksum");
         throw bad_fptr("GetArchiveChecksum");
@@ -892,7 +892,7 @@ QString UnitsyncHandler::getMapArchiveName(int index) {
     logger.debug("call GetMapArchiveName(", index, ")");
     return QString(fptr_GetMapArchiveName(index));
 }
-long UnitsyncHandler::getMapChecksum(int index) {
+int UnitsyncHandler::getMapChecksum(int index) {
     if (fptr_GetMapChecksum == NULL) {
         logger.error("Bad function pointer: GetMapChecksum");
         throw bad_fptr("GetMapChecksum");
@@ -900,7 +900,7 @@ long UnitsyncHandler::getMapChecksum(int index) {
     logger.debug("call GetMapChecksum(", index, ")");
     return fptr_GetMapChecksum(index);
 }
-long UnitsyncHandler::getMapChecksumFromName(QString mapName) {
+int UnitsyncHandler::getMapChecksumFromName(QString mapName) {
     if (fptr_GetMapChecksumFromName == NULL) {
         logger.error("Bad function pointer: GetMapChecksumFromName");
         throw bad_fptr("GetMapChecksumFromName");
@@ -1036,7 +1036,7 @@ int UnitsyncHandler::getPrimaryModIndex(QString name) {
     logger.debug("call GetPrimaryModIndex(", name.toStdString().c_str(), ")");
     return fptr_GetPrimaryModIndex(name.toStdString().c_str());
 }
-long UnitsyncHandler::getPrimaryModChecksum(int index) {
+int UnitsyncHandler::getPrimaryModChecksum(int index) {
     if (fptr_GetPrimaryModChecksum == NULL) {
         logger.error("Bad function pointer: GetPrimaryModChecksum");
         throw bad_fptr("GetPrimaryModChecksum");
@@ -1044,7 +1044,7 @@ long UnitsyncHandler::getPrimaryModChecksum(int index) {
     logger.debug("call GetPrimaryModChecksum(", index, ")");
     return fptr_GetPrimaryModChecksum(index);
 }
-long UnitsyncHandler::getPrimaryModChecksumFromName(QString name) {
+int UnitsyncHandler::getPrimaryModChecksumFromName(QString name) {
     if (fptr_GetPrimaryModChecksumFromName == NULL) {
         logger.error("Bad function pointer: GetPrimaryModChecksumFromName");
         throw bad_fptr("GetPrimaryModChecksumFromName");
