@@ -13,6 +13,7 @@
 #include <fstream>
 #include <ctime>
 #include <deque>
+#include <list>
 #include <algorithm>
 #if defined Q_OS_LINUX || defined Q_OS_MAC
     #include <sys/stat.h> // chmod()
@@ -47,6 +48,14 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
     #endif
 }
 
+static void copyFile(const std::string& from, const std::string& to) {
+    // Can't use due to a linking error, see http://tinyurl.com/p2tuaft
+    //fs::copy_file(tempFile, { target });
+    std::ifstream src(from, std::ios::binary);
+    std::ofstream dst(to, std::ios::binary);
+    dst << src.rdbuf();
+}
+
 void LobbyInterface::init() {
     #if defined Q_OS_LINUX
         os = "Linux";
@@ -79,6 +88,45 @@ void LobbyInterface::init() {
         fs::create_directories({ weblobbyDir + "logs" });
         frame->page()->settings()->setLocalStoragePath(QString::fromStdString(weblobbyDir + "storage"));
         logger.setLogFile(weblobbyDir + "weblobby.log");
+
+        auto args = QCoreApplication::arguments();
+        int argIndex = args.indexOf("-prepackaged-data");
+        if (argIndex >= 0 && argIndex + 1 < args.length()) {
+            auto path = fs::path(args[argIndex+1].toStdString());
+            auto stripPath = [=](fs::path p) -> fs::path {
+                auto it = path.begin();
+                auto itp = p.begin();
+                for(; it != path.end() && itp != p.end(); it++, itp++);
+                fs::path newPath;
+                for(; itp != p.end(); itp++)
+                    newPath /= *itp;
+                return newPath;
+            };
+            if (fs::exists(path)) {
+                std::list<fs::path> dirs;
+                fs::recursive_directory_iterator end_itr;
+                for (fs::recursive_directory_iterator it(path); it != end_itr; ++it) {
+                    if (fs::is_regular_file(it->path())) {
+                        auto src = it->path();
+                        auto dst = fs::path(springHome) / stripPath(it->path());
+                        logger.debug("Moving prepackaged file: ", src, " => ", dst);
+                        fs::create_directories(dst.parent_path());
+                        fs::rename(src, dst);
+                    } else if (fs::is_directory(it->path())) {
+                        dirs.push_back(it->path());
+                    }
+                }
+                fs::directory_iterator end;
+                for (fs::directory_iterator it(path); it != end; it++) {
+                    if (fs::exists(it->path())) {
+                        logger.debug("Deleting: ", it->path());
+                        fs::remove_all(it->path());
+                    }
+                }
+            } else {
+                logger.error("Prepackaged data not found at ", path.string());
+            }
+        }
     } catch(fs::filesystem_error e) {
         logger.error("Creating folders failed with: ", e.what());
     }
@@ -268,13 +316,7 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
     curl_easy_cleanup(handle);
     if (fo.tellp() > 0) {
         fo.close();
-        // Can't use due to a linking error, see http://tinyurl.com/p2tuaft
-        //fs::copy_file(tempFile, { target });
-        std::ifstream src(tempFileStr, std::ios::binary);
-        std::ofstream dst(target, std::ios::binary);
-        dst << src.rdbuf();
-        src.close();
-        dst.close();
+		copyFile(tempFileStr, target);
         #if defined Q_OS_LINUX || defined Q_OS_MAC
             if (target.find("pr-downloader") != std::string::npos)
                 chmod(target.c_str(), S_IRWXU | S_IRWXG | S_IROTH);
