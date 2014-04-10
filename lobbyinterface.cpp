@@ -93,6 +93,9 @@ void LobbyInterface::init() {
         int argIndex = args.indexOf("-prepackaged-data");
         if (argIndex >= 0 && argIndex + 1 < args.length()) {
             auto path = fs::path(args[argIndex+1].toStdString());
+            // Check for trailing slash.
+            if (path.filename() == ".")
+                path = path.parent_path();
             auto stripPath = [=](fs::path p) -> fs::path {
                 auto it = path.begin();
                 auto itp = p.begin();
