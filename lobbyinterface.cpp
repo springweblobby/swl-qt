@@ -13,7 +13,6 @@
 #include <fstream>
 #include <ctime>
 #include <deque>
-#include <list>
 #include <algorithm>
 #if defined Q_OS_LINUX || defined Q_OS_MAC
     #include <sys/stat.h> // chmod()
@@ -106,7 +105,6 @@ void LobbyInterface::init() {
                 return newPath;
             };
             if (fs::exists(path)) {
-                std::list<fs::path> dirs;
                 fs::recursive_directory_iterator end_itr;
                 for (fs::recursive_directory_iterator it(path); it != end_itr; ++it) {
                     if (fs::is_regular_file(it->path())) {
@@ -115,8 +113,6 @@ void LobbyInterface::init() {
                         logger.debug("Moving prepackaged file: ", src, " => ", dst);
                         fs::create_directories(dst.parent_path());
                         fs::rename(src, dst);
-                    } else if (fs::is_directory(it->path())) {
-                        dirs.push_back(it->path());
                     }
                 }
                 fs::directory_iterator end;
