@@ -14,7 +14,7 @@
     #error "Unknown target OS."
 #endif
 
-UnitsyncHandler::UnitsyncHandler(QObject* parent, Logger& logger, std::string path) :
+UnitsyncHandler::UnitsyncHandler(QObject* parent, Logger& logger, boost::filesystem::path path) :
         QObject(parent), logger(logger), ready(false), handle(NULL) {
     logger.info("Loading unitsync at ", path);
     #if defined Q_OS_LINUX || defined Q_OS_MAC
@@ -189,7 +189,7 @@ UnitsyncHandler::UnitsyncHandler(QObject* parent, Logger& logger, std::string pa
 
         ready = true;
     #elif defined Q_OS_WIN32
-        handle = LoadLibraryEx(std::wstring(path.begin(), path.end()).c_str(), NULL,
+        handle = LoadLibraryEx(path.c_str(), NULL,
             LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR);
         if(handle == NULL) {
             logger.warning("Could not load unitsync at ", path, ": ", GetLastError());

@@ -23,7 +23,7 @@ class QWebFrame;
 
 class ProcessRunner {
 public:
-    ProcessRunner(QObject* eventReceiver, const std::string& cmd, const std::vector<std::string>& args);
+    ProcessRunner(QObject* eventReceiver, const std::string& cmd, const std::vector<std::wstring>& args);
     ProcessRunner(ProcessRunner&&);
     ~ProcessRunner();
 
@@ -50,7 +50,7 @@ private:
     void runService();
     QObject* eventReceiver;
     std::string cmd;
-    std::vector<std::string> args;
+    std::vector<std::wstring> args;
     std::function<void()> terminate_func;
     boost::asio::io_service service;
     boost::thread runServiceThread, waitForExitThread;
@@ -116,7 +116,7 @@ public slots:
     void disconnect();
     void send(QString msg);
     bool downloadFile(QString url, QString target);
-    long getUserID();
+    unsigned int getUserID();
     int sendSomePacket(QString host, unsigned int port, QString msg);
 
     void playSound(QString url);
@@ -129,7 +129,7 @@ private:
     std::string escapeJs(const std::string&);
 
     std::string os;
-    std::string springHome;
+    boost::filesystem::path springHome;
     Logger logger;
     bool debugNetwork, debugCommands;
     NetworkHandler network;
@@ -140,7 +140,7 @@ private:
     #endif
 
     QWebFrame* frame;
-    std::map<std::string, UnitsyncHandler> unitsyncs;
+    std::map<boost::filesystem::path, UnitsyncHandler> unitsyncs;
     std::map<std::string, ProcessRunner> processes;
 };
 

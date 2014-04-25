@@ -7,6 +7,7 @@
 #include <QNetworkInterface>
 #include <QStandardPaths>
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 #include <boost/crc.hpp>
 #include <boost/chrono.hpp>
 #include <curl/curl.h>
@@ -47,11 +48,11 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
     #endif
 }
 
-static void copyFile(const std::string& from, const std::string& to) {
+static void copyFile(const fs::path& from, const fs::path& to) {
     // Can't use due to a linking error, see http://tinyurl.com/p2tuaft
-    //fs::copy_file(tempFile, { target });
-    std::ifstream src(from, std::ios::binary);
-    std::ofstream dst(to, std::ios::binary);
+    //fs::copy_file(from, to);
+    fs::ifstream src(from, std::ios::binary);
+    fs::ofstream dst(to, std::ios::binary);
     dst << src.rdbuf();
 }
 
@@ -69,29 +70,27 @@ void LobbyInterface::init() {
     if (springHome != "");
     else if (os == "Windows") {
         // This calls SHGetFolderPath(... CSIDL_PERSONAL ...), same as what Spring uses.
-        springHome = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation).toStdString() +
-            "/My Games/Spring";
+        springHome = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation).toStdWString() +
+            L"/My Games/Spring";
     } else {
         // ~/.spring
-        springHome = QStandardPaths::writableLocation(QStandardPaths::HomeLocation).toStdString() +
-            "/.spring";
+        springHome = QStandardPaths::writableLocation(QStandardPaths::HomeLocation).toStdWString() +
+            L"/.spring";
     }
     logger.info("springHome is ", springHome);
 
     try {
-        //const char slash = (os == "Windows" ? '\\' : '/');
-        const char slash = '/';
-        const std::string weblobbyDir = springHome + slash + "weblobby" + slash;
-        fs::create_directories({ weblobbyDir + "engine" });
-        fs::create_directories({ weblobbyDir + "pr-downloader" });
-        fs::create_directories({ weblobbyDir + "logs" });
-        frame->page()->settings()->setLocalStoragePath(QString::fromStdString(weblobbyDir + "storage"));
-        logger.setLogFile(weblobbyDir + "weblobby.log");
+        const fs::path weblobbyDir = springHome / "weblobby";
+        fs::create_directories(weblobbyDir / "engine");
+        fs::create_directories(weblobbyDir / "pr-downloader");
+        fs::create_directories(weblobbyDir / "logs");
+        frame->page()->settings()->setLocalStoragePath(QString::fromStdWString(weblobbyDir.wstring() + L"/storage"));
+        logger.setLogFile(weblobbyDir / "weblobby.log");
 
         auto args = QCoreApplication::arguments();
         int argIndex = args.indexOf("-prepackaged-data");
         if (argIndex >= 0 && argIndex + 1 < args.length()) {
-            auto path = fs::path(args[argIndex+1].toStdString());
+            auto path = fs::path(args[argIndex+1].toStdWString());
             // Check for trailing slash.
             if (path.filename() == ".")
                 path = path.parent_path();
@@ -109,7 +108,7 @@ void LobbyInterface::init() {
                 for (fs::recursive_directory_iterator it(path); it != end_itr; ++it) {
                     if (fs::is_regular_file(it->path())) {
                         auto src = it->path();
-                        auto dst = fs::path(springHome) / stripPath(it->path());
+                        auto dst = springHome / stripPath(it->path());
                         logger.debug("Moving prepackaged file: ", src, " => ", dst);
                         fs::create_directories(dst.parent_path());
                         fs::rename(src, dst);
@@ -123,7 +122,7 @@ void LobbyInterface::init() {
                     }
                 }
             } else {
-                logger.error("Prepackaged data not found at ", path.string());
+                logger.error("Prepackaged data not found at ", path);
             }
         }
     } catch(fs::filesystem_error e) {
@@ -132,12 +131,12 @@ void LobbyInterface::init() {
 }
 
 QString LobbyInterface::getSpringHome() {
-    return QString::fromStdString(springHome);
+    return QString::fromStdWString(springHome.wstring());
 }
 
 // Should be called prior to init() to take effect.
 void LobbyInterface::setSpringHome(QString path) {
-    springHome = path.toStdString();
+    springHome = path.toStdWString();
 }
 
 void LobbyInterface::connect(QString host, unsigned int port) {
@@ -202,38 +201,40 @@ QString LobbyInterface::listFiles(QString path) {
 }
 
 QString LobbyInterface::listFilesPriv(QString qpath, bool dirs) {
-    std::list<std::string> files;
-    std::string path = qpath.toStdString();
-    fs::path folder(path);
+    std::list<std::wstring> files;
+    fs::path path = qpath.toStdWString();
 
-    if (fs::exists(path) && fs::is_directory(folder)) {
+    if (fs::is_directory(path)) {
         fs::directory_iterator end_itr;
-        for (fs::directory_iterator it(folder); it != end_itr; ++it) {
+        for (fs::directory_iterator it(path); it != end_itr; ++it) {
             if (dirs && fs::is_directory(it->path())) {
-                std::string f = it->path().filename().string();
+                auto f = it->path().filename().wstring();
                 files.push_back(f);
             } else if (!dirs && !fs::is_directory(it->path())) {
-                std::string f = it->path().filename().string();
+                auto f = it->path().filename().wstring();
                 files.push_back(f);
             }
         }
+    } else {
+        logger.error("listFilesPriv(): not a directory: ", path);
     }
-    std::string out = "";
+    std::wstring out;
     if (!files.empty()) {
         out += files.front();
-        for (std::list<std::string>::iterator it = ++(files.begin()); it != files.end(); it++) {
-            out += "||" + *it;
+        for (auto it = ++(files.begin()); it != files.end(); it++) {
+            out += L"||" + *it;
         }
     }
 
-    return QString::fromStdString(out);
+    return QString::fromStdWString(out);
 }
 
-QString LobbyInterface::readFileLess(QString path, unsigned int lines) {
+QString LobbyInterface::readFileLess(QString qpath, unsigned int lines) {
     // TODO: deque? Just read the file in the reverse order, geez.
-    std::ifstream in(path.toStdString().c_str());
+    fs::path path = qpath.toStdWString();
+    fs::ifstream in(path);
     if (!in) {
-        logger.warning("readFileLess(): Could not open ", path.toStdString());
+        logger.warning("readFileLess(): Could not open ", path);
         return "";
     }
     std::deque<std::string> q;
@@ -270,13 +271,13 @@ size_t static write_data(void* buf, size_t size, size_t mult, void* file) {
 }
 bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
     auto url = qurl.toStdString();
-    auto target = qtarget.toStdString();
+    fs::path target = qtarget.toStdWString();
     logger.debug("downloadFile(): ", url, " => ", target);
     auto handle = curl_easy_init();
     curl_slist* hlist = NULL;
 
-    if (fs::exists({ target })) {
-        auto lastM_ = fs::last_write_time({ target });
+    if (fs::exists(target)) {
+        auto lastM_ = fs::last_write_time(target);
         auto lastM = std::gmtime(&lastM_);
         std::ostringstream ss;
         auto curLocale = std::locale();
@@ -291,10 +292,9 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
 
     auto tempFile = fs::temp_directory_path();
     tempFile += { "/weblobby_dl" };
-    std::string tempFileStr(tempFile.native().begin(), tempFile.native().end());
-    std::ofstream fo(tempFileStr, std::ios::binary);
+    fs::ofstream fo(tempFile, std::ios::binary);
     if (!fo.is_open() || !fo.good()) {
-        logger.error("downloadFile(): can't open file: ", tempFileStr);
+        logger.error("downloadFile(): can't open file: ", tempFile);
         return false;
     }
 
@@ -315,7 +315,7 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
     curl_easy_cleanup(handle);
     if (fo.tellp() > 0) {
         fo.close();
-		copyFile(tempFileStr, target);
+		copyFile(tempFile, target);
         #if defined Q_OS_LINUX || defined Q_OS_MAC
             if (target.find("pr-downloader") != std::string::npos)
                 chmod(target.c_str(), S_IRWXU | S_IRWXG | S_IROTH);
@@ -328,7 +328,7 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
 }
 
 QObject* LobbyInterface::getUnitsync(QString qpath) {
-    std::string path = qpath.toStdString();
+    fs::path path = qpath.toStdWString();
     if (!unitsyncs.count(path)) {
         unitsyncs.insert(std::make_pair(path, UnitsyncHandler(this, logger, path)));
     }
@@ -342,12 +342,13 @@ QObject* LobbyInterface::getUnitsync(QString qpath) {
     }
 }
 
-void LobbyInterface::createScript(QString path, QString script) {
-    std::ofstream out(path.toStdString());
+void LobbyInterface::createScript(QString qpath, QString script) {
+    fs::path path = qpath.toStdWString();
+    fs::ofstream out(path);
     if (out.is_open() && out.good())
         out << script.toStdString();
     else
-        logger.error("Could not create script at ", path.toStdString());
+        logger.error("Could not create script at ", path);
 }
 
 void LobbyInterface::killCommand(QString qcmdName)
@@ -363,9 +364,9 @@ void LobbyInterface::killCommand(QString qcmdName)
 void LobbyInterface::runCommand(QString qcmdName, QStringList cmd) {
     auto cmdName = qcmdName.toStdString();
     if(!processes.count(cmdName)) {
-        std::vector<std::string> args;
+        std::vector<std::wstring> args;
         for(auto i : cmd)
-            args.push_back(i.toStdString());
+            args.push_back(i.toStdWString());
         auto it = processes.insert(std::make_pair(cmdName, ProcessRunner(this, cmdName, args))).first;
         logger.info("Running command (", cmdName, "):\n", cmd.join(" ").toStdString());
         try {
@@ -379,21 +380,21 @@ void LobbyInterface::runCommand(QString qcmdName, QStringList cmd) {
 
 void LobbyInterface::createUiKeys(QString qpath) {
     boost::system::error_code ec;
-    std::string path = qpath.toStdString();
-    if (!fs::exists({ path }, ec) && ec == 0) {
+    fs::path path = qpath.toStdWString();
+    if (!fs::exists(path, ec)) {
         logger.info("Creating empty uikeys: ", path);
-        std::ofstream out(path);
+        fs::ofstream out(path);
     }
 }
 
 void LobbyInterface::deleteSpringSettings(QString qpath) {
-    std::string path = qpath.toStdString();
+    fs::path path = qpath.toStdWString();
     if (!qpath.endsWith("springsettings.cfg")) {
         logger.error("deleteSpringSettings(): not a spring settings file: ", path);
         return;
     }
     boost::system::error_code ec;
-    fs::remove({ path.c_str() }, ec);
+    fs::remove(path, ec);
     if (ec == 0)
         logger.info("Deleted spring settings: ", path);
     else
@@ -401,7 +402,7 @@ void LobbyInterface::deleteSpringSettings(QString qpath) {
 }
 
 void LobbyInterface::writeToFile(QString path, QString line) {
-    std::ofstream out(path.toStdString(), std::ios_base::app);
+    fs::ofstream out(fs::path(path.toStdWString()), std::ios::app);
     out << line.toStdString() << std::endl;
 }
 
@@ -495,7 +496,7 @@ int LobbyInterface::sendSomePacket(QString host, unsigned int port, QString msg)
     */
 }
 
-long LobbyInterface::getUserID() {
+unsigned int LobbyInterface::getUserID() {
     for(auto i : QNetworkInterface::allInterfaces()) {
         if((i.flags() & QNetworkInterface::IsUp) &&
                 (i.flags() & QNetworkInterface::IsRunning) &&

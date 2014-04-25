@@ -13,6 +13,8 @@
 #include <ctime>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/locks.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 
 class Logger {
 public:
@@ -24,7 +26,7 @@ public:
         guard lock(m_mutex);
         eventReceiver = obj;
     }
-    void setLogFile(const std::string& path) {
+    void setLogFile(const boost::filesystem::path& path) {
         guard lock(m_mutex);
         fileStream.open(path, std::ios_base::app);
     }
@@ -100,7 +102,7 @@ private:
 
     boost::mutex m_mutex;
     QObject* eventReceiver;
-    std::ofstream fileStream;
+    boost::filesystem::ofstream fileStream;
     bool debugEnabled;
 };
 

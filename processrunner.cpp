@@ -133,27 +133,31 @@ void ProcessRunner::run() {
         if((ptr = std::getenv(i)))
             env.push_back(i + std::string("=") + std::string(ptr));
     }
-    env.push_back("OMP_WAIT_POLICY=ACTIVE"); // not sure what this is for.
+    // This allegedly solves some hanging issues.
+    env.push_back("OMP_WAIT_POLICY=ACTIVE");
 
     #ifdef BOOST_WINDOWS_API
-        typedef std::vector<std::wstring> wrange;
-        wrange wargs, wenv;
-        for(auto i : args)
-            wargs.push_back(std::wstring(i.begin(), i.end()));
+        std::vector<std::wstring> wenv;
         for(auto i : env)
             wenv.push_back(std::wstring(i.begin(), i.end()));
     #endif
+    #ifdef BOOST_POSIX_API
+        #error TODO: Convert to UTF-8 properly!
+        std::vector<std::string> sargs;
+        for(auto i : args)
+            sargs.push_back(std::string(i.begin(), i.end()));
+    #endif
 
     try {
-        std::exception_ptr e_ptr;
-        waitForExitThread = boost::thread([=, this, &e_ptr](){
+        auto e_ptr = std::make_shared<std::exception_ptr>();
+        waitForExitThread = boost::thread([=, this](){
             try {
                 auto child = process::execute(
                     #if defined BOOST_POSIX_API
-                        set_args(args),
+                        set_args(sargs),
                         set_env(env),
                     #elif defined BOOST_WINDOWS_API
-                        set_args(wargs),
+                        set_args(args),
                         set_env(wenv),
                     #endif
                     bind_stdout(stdout_sink),
@@ -185,11 +189,11 @@ void ProcessRunner::run() {
                 #endif
 
             } catch(...) {
-                e_ptr = std::current_exception();
+                *e_ptr = std::current_exception();
             }
         });
-        if(waitForExitThread.try_join_for(boost::chrono::milliseconds(100)) && e_ptr)
-            std::rethrow_exception(e_ptr);
+        if(waitForExitThread.try_join_for(boost::chrono::milliseconds(100)) && *e_ptr)
+            std::rethrow_exception(*e_ptr);
     } catch(boost::system::system_error e) {
         throw e;
     }
@@ -244,7 +248,7 @@ ProcessRunner::~ProcessRunner() {
 }
 
 ProcessRunner::ProcessRunner(QObject* eventReceiver, const std::string& cmd,
-        const std::vector<std::string>& args) : eventReceiver(eventReceiver), cmd(cmd), args(args) {
+        const std::vector<std::wstring>& args) : eventReceiver(eventReceiver), cmd(cmd), args(args) {
 }
 
 ProcessRunner::ProcessRunner(ProcessRunner&& p) : eventReceiver(p.eventReceiver), cmd(p.cmd), args(p.args) {}
