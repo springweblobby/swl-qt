@@ -123,6 +123,7 @@ public slots:
 
     QString getSpringHome();
     void setSpringHome(QString path);
+    int getApiVersion() { return 1; } // TODO: hook to have revision in here?
 private:
     QString listFilesPriv(QString path, bool dirs);
     void evalJs(const std::string&);
