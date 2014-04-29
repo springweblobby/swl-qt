@@ -4,12 +4,13 @@
 #include "logger.h"
 #include <string>
 #include <exception>
+#include <boost/filesystem.hpp>
 #include <QObject>
 
 class UnitsyncHandler : public QObject {
     Q_OBJECT
 public:
-    UnitsyncHandler(QObject* parent, Logger&, std::string dllpath);
+    UnitsyncHandler(QObject* parent, Logger&, boost::filesystem::path dllpath);
     ~UnitsyncHandler();
     bool isReady() {
         return ready;
