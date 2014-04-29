@@ -94,32 +94,11 @@ void LobbyInterface::init() {
             // Check for trailing slash.
             if (path.filename() == ".")
                 path = path.parent_path();
-            auto stripPath = [=](fs::path p) -> fs::path {
-                auto it = path.begin();
-                auto itp = p.begin();
-                for(; it != path.end() && itp != p.end(); it++, itp++);
-                fs::path newPath;
-                for(; itp != p.end(); itp++)
-                    newPath /= *itp;
-                return newPath;
-            };
             if (fs::exists(path)) {
-                fs::recursive_directory_iterator end_itr;
-                for (fs::recursive_directory_iterator it(path); it != end_itr; ++it) {
-                    if (fs::is_regular_file(it->path())) {
-                        auto src = it->path();
-                        auto dst = springHome / stripPath(it->path());
-                        logger.debug("Moving prepackaged file: ", src, " => ", dst);
-                        fs::create_directories(dst.parent_path());
-                        fs::rename(src, dst);
-                    }
-                }
                 fs::directory_iterator end;
                 for (fs::directory_iterator it(path); it != end; it++) {
-                    if (fs::exists(it->path())) {
-                        logger.debug("Deleting: ", it->path());
-                        fs::remove_all(it->path());
-                    }
+                    logger.debug("Moving prepackaged data: ", it->path(), " => ",  springHome / it->path().filename());
+                    fs::rename(it->path(), springHome / it->path().filename());
                 }
             } else {
                 logger.error("Prepackaged data not found at ", path);
@@ -317,7 +296,7 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
         fo.close();
 		copyFile(tempFile, target);
         #if defined Q_OS_LINUX || defined Q_OS_MAC
-            if (target.find("pr-downloader") != std::string::npos)
+            if (target.string().find("pr-downloader") != std::string::npos)
                 chmod(target.c_str(), S_IRWXU | S_IRWXG | S_IROTH);
         #endif
         logger.debug("downloadFile(): finished.");
