@@ -128,6 +128,7 @@ private:
     QString listFilesPriv(QString path, bool dirs);
     void evalJs(const std::string&);
     std::string escapeJs(const std::string&);
+    void move(const boost::filesystem::path& from, const boost::filesystem::path& to);
 
     std::string os;
     boost::filesystem::path springHome;

@@ -55,6 +55,25 @@ static void copyFile(const fs::path& from, const fs::path& to) {
     fs::ofstream dst(to, std::ios::binary);
     dst << src.rdbuf();
 }
+void LobbyInterface::move(const fs::path& src, const fs::path& dst) {
+    if (fs::is_regular_file(src)) {
+        logger.debug("Moving prepackaged file: ", src, " => ", dst);
+        boost::system::error_code ec;
+        fs::rename(src, dst, ec);
+        // rename() doesn't work across fs boundaries.
+        if (ec != 0) {
+            copyFile(src, dst);
+            fs::remove(src);
+        }
+    } else if (fs::is_directory(src)) {
+        fs::create_directories(dst);
+        fs::directory_iterator end;
+        for (fs::directory_iterator it(src); it != end; it++) {
+            move(it->path(), dst / it->path().filename());
+        }
+        fs::remove(src);
+    }
+}
 
 void LobbyInterface::init() {
     #if defined Q_OS_LINUX
@@ -90,15 +109,14 @@ void LobbyInterface::init() {
         auto args = QCoreApplication::arguments();
         int argIndex = args.indexOf("-prepackaged-data");
         if (argIndex >= 0 && argIndex + 1 < args.length()) {
-            auto path = fs::path(args[argIndex+1].toStdWString());
+            fs::path path = args[argIndex+1].toStdWString();
             // Check for trailing slash.
             if (path.filename() == ".")
                 path = path.parent_path();
             if (fs::exists(path)) {
                 fs::directory_iterator end;
                 for (fs::directory_iterator it(path); it != end; it++) {
-                    logger.debug("Moving prepackaged data: ", it->path(), " => ",  springHome / it->path().filename());
-                    fs::rename(it->path(), springHome / it->path().filename());
+                    move(it->path(), springHome / it->path().filename());
                 }
             } else {
                 logger.error("Prepackaged data not found at ", path);
