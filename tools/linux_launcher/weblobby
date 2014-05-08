@@ -18,7 +18,10 @@ cd lib
 if [ ! -d unused ]; then
     echo -n "Checking deps..."
     mkdir unused
-    for i in $(for i in `find . -type f -executable`; do LD_LIBRARY_PATH= ldd $i; done |
+    # It used to test all executables, but Steam makes every file executable,
+    # including 1.4 gigs in evo_data...
+    # So now the executable list should be revieved manually.
+    for i in $(for i in *.so* weblobby gstreamer_play gst/* imageformats/* platforms/*; do LD_LIBRARY_PATH= ldd $i; done |
             sed -e '/not /d;/libQt5/d;/libgst/d;/libicu/d;/libboost/d;s/^[[:space:]]*\([^ ]*\).*$/\1/'); do
         mv `basename $i` unused/ &> /dev/null
     done
