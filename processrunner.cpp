@@ -151,7 +151,6 @@ void ProcessRunner::run() {
     try {
         auto e_ptr = std::make_shared<std::exception_ptr>();
 
-
         //doesn't work in mac
         //waitForExitThread = boost::thread([=, this](){
         waitForExitThread = boost::thread([=](){
