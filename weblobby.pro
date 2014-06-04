@@ -33,3 +33,5 @@ win32 {
 #INCLUDEPATH += /opt/local/include
 #LIBS += -L /opt/local/lib
 #LIBS += -lboost_filesystem-mt -lboost_system-mt -lboost_thread-mt -lboost_iostreams-mt -lboost_chrono-mt -lcurl -ldl
+
+#
