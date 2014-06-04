@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
     WebLobbyWindow webLobbyWindow;
     #if defined Q_OS_WINDOWS
         webLobbyWindow.setWindowIcon(app.windowIcon());
-    #elif defined Q_OS_LINUX
+    #else
         webLobbyWindow.setWindowIcon(QIcon("icon.png"));
     #endif
     webLobbyWindow.showMaximized();
