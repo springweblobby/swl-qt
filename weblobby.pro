@@ -19,6 +19,7 @@ HEADERS += \
 INCLUDEPATH += Boost.Process-0.5
 
 unix {
+    #comment below for mac
     LIBS += -lboost_filesystem -lboost_system -lboost_thread -lboost_iostreams -lboost_chrono -lcurl -ldl
 }
 win32 {
@@ -27,3 +28,8 @@ win32 {
     LIBS += -lws2_32 -lwsock32 -lcurl
     LIBS += -Wl,-subsystem,console -mconsole
 }
+
+#uncomment below for mac
+#INCLUDEPATH += /opt/local/include
+#LIBS += -L /opt/local/lib
+#LIBS += -lboost_filesystem-mt -lboost_system-mt -lboost_thread-mt -lboost_iostreams-mt -lboost_chrono-mt -lcurl -ldl

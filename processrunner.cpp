@@ -150,7 +150,10 @@ void ProcessRunner::run() {
 
     try {
         auto e_ptr = std::make_shared<std::exception_ptr>();
-        waitForExitThread = boost::thread([=, this](){
+
+        //doesn't work in mac
+        //waitForExitThread = boost::thread([=, this](){
+        waitForExitThread = boost::thread([=](){
             try {
                 auto child = process::execute(
                     #if defined BOOST_POSIX_API
