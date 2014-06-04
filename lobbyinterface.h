@@ -25,6 +25,7 @@ class ProcessRunner {
 public:
     ProcessRunner(QObject* eventReceiver, const std::string& cmd, const std::vector<std::wstring>& args);
     ProcessRunner(ProcessRunner&&);
+    ProcessRunner(const ProcessRunner&) = delete;
     ~ProcessRunner();
 
     // Throws boost::system::system_error on failure.
