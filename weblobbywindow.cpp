@@ -38,7 +38,7 @@ WebLobbyWindow::WebLobbyWindow(QWidget *parent) : QMainWindow(parent) {
     if (args.contains("-url") && args.indexOf("-url") + 1 < args.length())
         view->load(QUrl(args[args.indexOf("-url") + 1]));
     else
-        view->load(QUrl("http://weblobby.springrts.com/test-qtcpp/index.html"));
+        view->load(QUrl("http://weblobby.springrts.com/qt/index.html"));
 
     connect(view->page()->mainFrame(), SIGNAL(javaScriptWindowObjectCleared()),
             this, SLOT(addJSObject()));
