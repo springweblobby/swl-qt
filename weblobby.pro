@@ -8,13 +8,15 @@ SOURCES += main.cpp \
     lobbyinterface.cpp \
     networkhandler.cpp \
     unitsynchandler.cpp \
+    unitsynchandler_t.cpp \
     processrunner.cpp
 
 HEADERS += \
     weblobbywindow.h \
     lobbyinterface.h \
     logger.h \
-    unitsynchandler.h
+    unitsynchandler.h\
+    unitsynchandler_t.h
 
 INCLUDEPATH += Boost.Process-0.5
 

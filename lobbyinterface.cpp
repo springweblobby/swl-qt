@@ -339,6 +339,21 @@ QObject* LobbyInterface::getUnitsync(QString qpath) {
     }
 }
 
+QObject* LobbyInterface::getUnitsyncAsync(QString qpath) {
+    fs::path path = qpath.toStdWString();
+    if (!unitsyncs_async.count(path)) {
+        unitsyncs_async.insert(std::make_pair(path, UnitsyncHandlerAsync(this, logger, path)));
+    }
+
+    if (unitsyncs_async.find(path)->second.startThread())
+        return &(unitsyncs_async.find(path)->second);
+    else {
+        logger.warning("Unitsync not loaded at ", path);
+        unitsyncs_async.erase(unitsyncs_async.find(path));
+        return NULL;
+    }
+}
+
 void LobbyInterface::createScript(QString qpath, QString script) {
     fs::path path = qpath.toStdWString();
     fs::ofstream out(path);

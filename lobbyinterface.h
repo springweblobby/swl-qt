@@ -3,6 +3,7 @@
 
 #include "logger.h"
 #include "unitsynchandler.h"
+#include "unitsynchandler_t.h"
 #include <QObject>
 #include <QEvent>
 #include <QStringList>
@@ -109,6 +110,7 @@ public slots:
     void deleteSpringSettings(QString path);
 
     QObject* getUnitsync(QString path);
+    QObject* getUnitsyncAsync(QString path);
 
     void killCommand(QString cmdName);
     void runCommand(QString cmdName, QStringList args);
@@ -144,6 +146,7 @@ private:
 
     QWebFrame* frame;
     std::map<boost::filesystem::path, UnitsyncHandler> unitsyncs;
+    std::map<boost::filesystem::path, UnitsyncHandlerAsync> unitsyncs_async;
     std::map<std::string, ProcessRunner> processes;
 };
 
