@@ -22,6 +22,14 @@ public:
     UnitsyncHandlerAsync& operator=(const UnitsyncHandlerAsync&) = delete;
     UnitsyncHandlerAsync(UnitsyncHandlerAsync&&);
 
+    // Event used when unitsync wants to send a function result to js.
+    struct ResultEvent : QEvent {
+        ResultEvent(std::string id, std::string type, std::string res) : QEvent(QEvent::Type(TypeId)),
+            id(id), type(type), res(res) {}
+        std::string id, type, res;
+        static const int TypeId = QEvent::User + 5; // maybe magic numbers aren't the answer...
+    };
+
     struct bad_fptr : public std::exception {
         bad_fptr(std::string symbol) {
             m_what = "Symbol " + symbol + " not found in the unitsync library.";
@@ -36,7 +44,9 @@ public slots:
 
     // Unitsync functions.
 
-    QString init(bool, int);
+    void init(QString, bool, int);
+    void getPrimaryModCount(QString);
+    void getMapCount(QString);
 
 private:
     Logger& logger;

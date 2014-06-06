@@ -24,6 +24,7 @@ bool UnitsyncHandlerAsync::startThread() {
             while (ready) {{
                     boost::unique_lock<boost::mutex> lock(queueMutex);
                     queueCond.wait(lock, [=](){ return !(ready && queue.empty()); });
+		    if (!ready) break;
                     func = queue.front();
                     queue.pop();
                 }{
@@ -32,6 +33,7 @@ bool UnitsyncHandlerAsync::startThread() {
                 }
             }
         });
+        return true;
     } else
         return false;
 }
@@ -393,7 +395,8 @@ UnitsyncHandlerAsync::~UnitsyncHandlerAsync() {{
         ready = false;
     }
     queueCond.notify_all();
-    workThread.join();
+    if (workThread.joinable())
+	workThread.join();
 
     #if defined Q_OS_LINUX || defined Q_OS_MAC
         if (handle)
@@ -601,12 +604,44 @@ QString UnitsyncHandlerAsync::jsReadFileVFS(int fd, int size) {
     return res;
 }
 
-QString UnitsyncHandlerAsync::init(bool isServer, int id) {
+void UnitsyncHandlerAsync::init(QString __id, bool isServer, int id) {
     if (fptr_Init == NULL) {
         logger.error("Bad function pointer: Init");
         throw bad_fptr("Init");
     }
-    logger.debug("call Init(", isServer, ", ", id, ")");
-    //return fptr_Init(isServer, id);
-    return "asdf";
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call Init(", isServer, ", ", id, ")");
+        fptr_Init(isServer, id);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+
+void UnitsyncHandlerAsync::getPrimaryModCount(QString __id) {
+    if (fptr_Init == NULL) {
+        logger.error("Bad function pointer: Init");
+        throw bad_fptr("Init");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetPrimaryModCount(",")");
+        int res = fptr_GetPrimaryModCount();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+
+void UnitsyncHandlerAsync::getMapCount(QString __id) {
+    if (fptr_Init == NULL) {
+        logger.error("Bad function pointer: Init");
+        throw bad_fptr("Init");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapCount(",")");
+        int res = fptr_GetMapCount();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
 }

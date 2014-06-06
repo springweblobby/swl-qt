@@ -171,6 +171,10 @@ bool LobbyInterface::event(QEvent* evt) {
             processes.erase(processes.find(termEvt.cmd));
         }
         return true;
+    } else if (evt->type() == UnitsyncHandlerAsync::ResultEvent::TypeId) {
+        auto resEvt = dynamic_cast<UnitsyncHandlerAsync::ResultEvent&>(*evt);
+        evalJs("unitsyncResult('" + escapeJs(resEvt.id) + "', '" + escapeJs(resEvt.type) + "', '" + escapeJs(resEvt.res) + "')");
+        return true;
     } else {
         return QObject::event(evt);
     }
