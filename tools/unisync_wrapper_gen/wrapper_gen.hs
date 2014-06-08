@@ -65,6 +65,18 @@ putTemplate funcs "public_methods_definitions_async" = concat $ flip map (onlyKn
      "    queueCond.notify_all();",
      "}"]
 
+-- Methods for js wrapper.
+putTemplate funcs "js_wrapper_methods" = concat $ flip map (onlyKnown funcs) $ \(CFunc ret name args) ->
+    ["" <> toLowerCase name <> ": function(" <> commaList (map (\(Arg name _) -> name) args) <> ")",
+     "{",
+     "\tvar __id = this.getUniqId();",
+     "\tvar deferred = new Deferred();",
+     "\tvar unsub = { obj: null };",
+     "\tunsub.obj = topic.subscribe('Lobby/unitsync/' + __id, lang.hitch(this, lang.partial(this.resolveDeferred, deferred, unsub)));",
+     "\tthis.jsobject." <> toLowerCase name <> "(" <> commaList ("__id" : map (\(Arg name _) -> name) args) <> ");",
+     "\treturn deferred.promise;",
+	 "},"]
+
 
 
 -- This goes into the move ctor of UnitsyncHandler.
