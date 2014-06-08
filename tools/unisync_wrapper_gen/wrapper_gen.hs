@@ -3,6 +3,7 @@
 import System.Environment
 import Data.Monoid ((<>))
 import Data.Char
+import Data.Either
 import Data.List (intersperse)
 import qualified Data.ByteString.Char8 as B
 import Data.ByteString (ByteString)
@@ -28,23 +29,29 @@ getExternalRep t = t
 
 putTemplate :: [CFunc] -> ByteString -> [ByteString]
 
+-- This goes into the move ctor of UnitsyncHandler.
 putTemplate funcs "move_ctor_assignment" = map (\(CFunc _ name _) ->
     "fptr_" <> name <> " = h.fptr_" <> name <> ";") funcs
 
+-- Initialize function pointers on Unix with dlsym().
 putTemplate funcs "fptr_initialization_unix" = map (\(CFunc _ name _) ->
     "fptr_" <> name <> " = (fptr_type_" <> name <> ")dlsym(handle, \"" <> name <> "\");") funcs
 
+-- Initialize function pointers on Windows with GetProcAddress().
 putTemplate funcs "fptr_initialization_windows" = map (\(CFunc _ name _) ->
     "fptr_" <> name <> " = (fptr_type_" <> name <> ")GetProcAddress((HMODULE)handle, \"" <> name <> "\");") funcs
 
+-- Declarations of function pointer types and pointers themselves.
 putTemplate funcs "header_properties" = concat $ flip map funcs $ \(CFunc ret name args) ->
     ["typedef " <> showCType ret <> " (*fptr_type_" <> name <> ")(" <> commaList (map (\(Arg _ t) -> showCType t) args) <> ");",
      "fptr_type_" <> name <> " fptr_" <> name <> ";"]
 
+-- Declarations of public methods for UnitsyncHandler.
 putTemplate funcs "header_public_methods" = flip map (onlyKnown funcs) $ \(CFunc ret name args) ->
     showCType (getExternalRep ret) <> " " <> toLowerCase name <> "(" <> commaList (map (\(Arg _ t) ->
         showCType (getExternalRep t)) args) <> ");"
 
+-- Definitions of the public methods.
 putTemplate funcs "public_methods_definitions" = concat $ flip map (onlyKnown funcs) $ \(CFunc ret name args) ->
  let callArgs = flip map args $ \(Arg n t) -> marshallIn (getExternalRep t) n
   in [showCType (getExternalRep ret) <> " UnitsyncHandler::" <> toLowerCase name <> "(" <>
@@ -91,8 +98,7 @@ commaList :: [ByteString] -> ByteString
 commaList [] = ""
 commaList xs = foldr1 (\a b -> a <> ", " <> b) xs
 
--- Parse the API header for exported functions. This is written really badly,
--- it will just silently skip any function it failed to parse. Very ad hoc. Ew.
+-- Parse the API header for exported functions.
 
 data CFunc = CFunc CType ByteString [Arg] deriving(Show)
 data Arg = Arg ByteString CType deriving(Show)
@@ -114,6 +120,7 @@ parseCType = tryType ["const", "char", "*"] CString <|> tryType ["unsigned", "in
     tryType ["int"] CInt <|> tryType ["const", "int"] CInt <|> tryType ["float"] CFloat <|>
     tryType ["const float"] CFloat <|> tryType ["bool"] CBool <|> tryType ["char", "*"] (CUnknown "char*") <|>
     tryType ["unsigned", "char", "*"] (CUnknown "unsigned char*") <|> tryType ["void"] CVoid <|>
+    tryType ["MapInfo", "*"] (CUnknown "MapInfo*") <|>
     parserFail "unknown type (add to parseCType)"
     where f [] ret = return ret
           f (x:xs) ret = string x >> spaces >> f xs ret
@@ -130,12 +137,16 @@ function = do
     name <- fmap B.pack $ many1 $ try alphaNum <|> oneOf "-_"
     spaces >> char '('
     args <- sepBy argument $ spaces >> char ',' >> spaces
-    spaces >> char ')' >> spaces >> char ';' >> spaces
+    spaces >> char ')' >> spaces >> char ';' >> skipMany (char ' ') -- "spaces" parses newlines too!
     return $ CFunc ret name args
 
-functions :: Parser [CFunc]
-functions = (try function >>= (\f -> fmap (f:) functions)) <|>
-    try (many (noneOf ['\n']) >> newline >> functions) <|> (eof >> return [])
+functions :: Parser [Either ByteString CFunc]
+functions = do
+    r <- sepEndBy1 (fmap  Right (try function) <|> fmap Left (try comment) <?> "function defenition or comment") $ skipMany newline
+    eof
+    return r
+    where comment = try (spaces >> string "/*" >> manyTill anyChar (try (string "*/")) >> return "/**/") <|>
+            ((try (spaces >> string "//") <|> try (spaces >> string "#")) >> many (noneOf ['\n']) >> return "//")
 
 main = do
     args <- getArgs
@@ -145,9 +156,11 @@ main = do
         res <- parseFromFile functions $ head args
         case res of
             (Left e) -> print e
-            (Right fs) -> do
+            (Right fs') -> do
+                let fs = rights fs'
                 putStrLn $ "Parsing " ++ (head args) ++ "..."
                 mapM_ print fs
+                --mapM_ print fs'
                 putStr $ show $ length fs
                 putStrLn " functions, processing templates...\n"
                 mapM_ (processTemplate fs) $ tail args
