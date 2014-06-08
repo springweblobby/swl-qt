@@ -11,6 +11,7 @@
 #include <boost/thread/condition_variable.hpp>
 #include <QObject>
 
+class MapInfo;
 class UnitsyncHandlerAsync : public QObject {
     Q_OBJECT
 public:
@@ -24,7 +25,7 @@ public:
 
     // Event used when unitsync wants to send a function result to js.
     struct ResultEvent : QEvent {
-        ResultEvent(std::string id, std::string type, std::string res) : QEvent(QEvent::Type(TypeId)),
+        ResultEvent(const std::string& id, const std::string& type, const std::string& res) : QEvent(QEvent::Type(TypeId)),
             id(id), type(type), res(res) {}
         std::string id, type, res;
         static const int TypeId = QEvent::User + 5; // maybe magic numbers aren't the answer...
@@ -40,13 +41,165 @@ public:
 
 public slots:
 
-    QString jsReadFileVFS(int fd, int size);
+    void jsReadFileVFS(QString, int fd, int size);
 
     // Unitsync functions.
 
+    void getNextError(QString);
+    void getSpringVersion(QString);
+    void getSpringVersionPatchset(QString);
+    void isSpringReleaseVersion(QString);
     void init(QString, bool, int);
-    void getPrimaryModCount(QString);
+    void unInit(QString);
+    void getWritableDataDirectory(QString);
+    void getDataDirectoryCount(QString);
+    void getDataDirectory(QString, int);
+    void processUnits(QString);
+    void getUnitCount(QString);
+    void getUnitName(QString, int);
+    void getFullUnitName(QString, int);
+    void addArchive(QString, QString);
+    void addAllArchives(QString, QString);
+    void removeAllArchives(QString);
+    void getArchiveChecksum(QString, QString);
+    void getArchivePath(QString, QString);
     void getMapCount(QString);
+    void getMapName(QString, int);
+    void getMapFileName(QString, int);
+    void getMapDescription(QString, int);
+    void getMapAuthor(QString, int);
+    void getMapWidth(QString, int);
+    void getMapHeight(QString, int);
+    void getMapTidalStrength(QString, int);
+    void getMapWindMin(QString, int);
+    void getMapWindMax(QString, int);
+    void getMapGravity(QString, int);
+    void getMapResourceCount(QString, int);
+    void getMapResourceName(QString, int, int);
+    void getMapResourceMax(QString, int, int);
+    void getMapResourceExtractorRadius(QString, int, int);
+    void getMapPosCount(QString, int);
+    void getMapPosX(QString, int, int);
+    void getMapPosZ(QString, int, int);
+    void getMapMinHeight(QString, QString);
+    void getMapMaxHeight(QString, QString);
+    void getMapArchiveCount(QString, QString);
+    void getMapArchiveName(QString, int);
+    void getMapChecksum(QString, int);
+    void getMapChecksumFromName(QString, QString);
+    void getSkirmishAICount(QString);
+    void getSkirmishAIInfoCount(QString, int);
+    void getInfoKey(QString, int);
+    void getInfoType(QString, int);
+    void getInfoValueString(QString, int);
+    void getInfoValueInteger(QString, int);
+    void getInfoValueFloat(QString, int);
+    void getInfoValueBool(QString, int);
+    void getInfoDescription(QString, int);
+    void getSkirmishAIOptionCount(QString, int);
+    void getPrimaryModCount(QString);
+    void getPrimaryModInfoCount(QString, int);
+    void getPrimaryModArchive(QString, int);
+    void getPrimaryModArchiveCount(QString, int);
+    void getPrimaryModArchiveList(QString, int);
+    void getPrimaryModIndex(QString, QString);
+    void getPrimaryModChecksum(QString, int);
+    void getPrimaryModChecksumFromName(QString, QString);
+    void getSideCount(QString);
+    void getSideName(QString, int);
+    void getSideStartUnit(QString, int);
+    void getMapOptionCount(QString, QString);
+    void getModOptionCount(QString);
+    void getCustomOptionCount(QString, QString);
+    void getOptionKey(QString, int);
+    void getOptionScope(QString, int);
+    void getOptionName(QString, int);
+    void getOptionSection(QString, int);
+    void getOptionStyle(QString, int);
+    void getOptionDesc(QString, int);
+    void getOptionType(QString, int);
+    void getOptionBoolDef(QString, int);
+    void getOptionNumberDef(QString, int);
+    void getOptionNumberMin(QString, int);
+    void getOptionNumberMax(QString, int);
+    void getOptionNumberStep(QString, int);
+    void getOptionStringDef(QString, int);
+    void getOptionStringMaxLen(QString, int);
+    void getOptionListCount(QString, int);
+    void getOptionListDef(QString, int);
+    void getOptionListItemKey(QString, int, int);
+    void getOptionListItemName(QString, int, int);
+    void getOptionListItemDesc(QString, int, int);
+    void getModValidMapCount(QString);
+    void getModValidMap(QString, int);
+    void openFileVFS(QString, QString);
+    void closeFileVFS(QString, int);
+    void fileSizeVFS(QString, int);
+    void initFindVFS(QString, QString);
+    void initDirListVFS(QString, QString, QString, QString);
+    void initSubDirsVFS(QString, QString, QString, QString);
+    void openArchive(QString, QString);
+    void closeArchive(QString, int);
+    void openArchiveFile(QString, int, QString);
+    void closeArchiveFile(QString, int, int);
+    void sizeArchiveFile(QString, int, int);
+    void setSpringConfigFile(QString, QString);
+    void getSpringConfigFile(QString);
+    void getSpringConfigString(QString, QString, QString);
+    void getSpringConfigInt(QString, QString, int);
+    void getSpringConfigFloat(QString, QString, float);
+    void setSpringConfigString(QString, QString, QString);
+    void setSpringConfigInt(QString, QString, int);
+    void setSpringConfigFloat(QString, QString, float);
+    void deleteSpringConfigKey(QString, QString);
+    void lpClose(QString);
+    void lpOpenFile(QString, QString, QString, QString);
+    void lpOpenSource(QString, QString, QString);
+    void lpExecute(QString);
+    void lpErrorLog(QString);
+    void lpAddTableInt(QString, int, int);
+    void lpAddTableStr(QString, QString, int);
+    void lpEndTable(QString);
+    void lpAddIntKeyIntVal(QString, int, int);
+    void lpAddStrKeyIntVal(QString, QString, int);
+    void lpAddIntKeyBoolVal(QString, int, int);
+    void lpAddStrKeyBoolVal(QString, QString, int);
+    void lpAddIntKeyFloatVal(QString, int, float);
+    void lpAddStrKeyFloatVal(QString, QString, float);
+    void lpAddIntKeyStrVal(QString, int, QString);
+    void lpAddStrKeyStrVal(QString, QString, QString);
+    void lpRootTable(QString);
+    void lpRootTableExpr(QString, QString);
+    void lpSubTableInt(QString, int);
+    void lpSubTableStr(QString, QString);
+    void lpSubTableExpr(QString, QString);
+    void lpPopTable(QString);
+    void lpGetKeyExistsInt(QString, int);
+    void lpGetKeyExistsStr(QString, QString);
+    void lpGetIntKeyType(QString, int);
+    void lpGetStrKeyType(QString, QString);
+    void lpGetIntKeyListCount(QString);
+    void lpGetIntKeyListEntry(QString, int);
+    void lpGetStrKeyListCount(QString);
+    void lpGetStrKeyListEntry(QString, int);
+    void lpGetIntKeyIntVal(QString, int, int);
+    void lpGetStrKeyIntVal(QString, QString, int);
+    void lpGetIntKeyBoolVal(QString, int, int);
+    void lpGetStrKeyBoolVal(QString, QString, int);
+    void lpGetIntKeyFloatVal(QString, int, float);
+    void lpGetStrKeyFloatVal(QString, QString, float);
+    void lpGetIntKeyStrVal(QString, int, QString);
+    void lpGetStrKeyStrVal(QString, QString, QString);
+    void processUnitsNoChecksum(QString);
+    void getInfoValue(QString, int);
+    void getPrimaryModName(QString, int);
+    void getPrimaryModShortName(QString, int);
+    void getPrimaryModVersion(QString, int);
+    void getPrimaryModMutator(QString, int);
+    void getPrimaryModGame(QString, int);
+    void getPrimaryModShortGame(QString, int);
+    void getPrimaryModDescription(QString, int);
+    void openArchiveType(QString, QString, QString);
 
 private:
     Logger& logger;
@@ -369,6 +522,10 @@ private:
     fptr_type_lpGetStrKeyStrVal fptr_lpGetStrKeyStrVal;
     typedef int (*fptr_type_ProcessUnitsNoChecksum)();
     fptr_type_ProcessUnitsNoChecksum fptr_ProcessUnitsNoChecksum;
+    typedef int (*fptr_type_GetMapInfoEx)(const char*, MapInfo*, int);
+    fptr_type_GetMapInfoEx fptr_GetMapInfoEx;
+    typedef int (*fptr_type_GetMapInfo)(const char*, MapInfo*);
+    fptr_type_GetMapInfo fptr_GetMapInfo;
     typedef const char* (*fptr_type_GetInfoValue)(int);
     fptr_type_GetInfoValue fptr_GetInfoValue;
     typedef const char* (*fptr_type_GetPrimaryModName)(int);

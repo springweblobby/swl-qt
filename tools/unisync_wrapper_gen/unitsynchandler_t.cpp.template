@@ -1,0 +1,130 @@
+#include "unitsynchandler_t.h"
+#include <cstdio> // good ol' snprintf
+#include <boost/thread/locks.hpp>
+#if defined Q_OS_LINUX || defined Q_OS_MAC
+    #include <dlfcn.h>
+#elif defined Q_OS_WIN32
+	#include <windows.h>
+    #ifndef LOAD_LIBRARY_SEARCH_DEFAULT_DIRS
+        #define LOAD_LIBRARY_SEARCH_DEFAULT_DIRS 0x1000
+    #endif
+    #ifndef LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR
+        #define LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR 0x100
+    #endif
+#else
+    #error "Unknown target OS."
+#endif
+
+boost::mutex UnitsyncHandlerAsync::executionMutex;
+
+bool UnitsyncHandlerAsync::startThread() {
+    if (ready) {
+        workThread = boost::thread([=](){
+            std::function<void()> func;
+            while (ready) {{
+                    boost::unique_lock<boost::mutex> lock(queueMutex);
+                    queueCond.wait(lock, [=](){ return !(ready && queue.empty()); });
+		    if (!ready) break;
+                    func = queue.front();
+                    queue.pop();
+                }{
+                    boost::lock_guard<boost::mutex> lock(executionMutex);
+                    func();
+                }
+            }
+        });
+        return true;
+    } else
+        return false;
+}
+
+UnitsyncHandlerAsync::UnitsyncHandlerAsync(QObject* parent, Logger& logger, boost::filesystem::path path) :
+        QObject(parent), logger(logger), ready(false), handle(NULL) {
+    logger.info("Loading unitsync at ", path);
+    #if defined Q_OS_LINUX || defined Q_OS_MAC
+        handle = dlopen(path.c_str(), RTLD_LAZY | RTLD_LOCAL);
+        if(handle == NULL) {
+            logger.warning("Could not load unitsync at ", path, ": ", dlerror());
+            return;
+        }
+
+        ${fptr_initialization_unix}
+
+        ready = true;
+    #elif defined Q_OS_WIN32
+        handle = LoadLibraryEx(path.c_str(), NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+        if(handle == NULL) {
+            logger.warning("Could not load unitsync at ", path, ": ", GetLastError());
+            return;
+        }
+
+        ${fptr_initialization_windows}
+
+        ready = true;
+    #else
+        #error "Unknown target OS."
+    #endif
+}
+
+UnitsyncHandlerAsync::~UnitsyncHandlerAsync() {{
+        boost::unique_lock<boost::mutex> lock(queueMutex);
+        while (!queue.empty())
+            queue.pop();
+        ready = false;
+    }
+    queueCond.notify_all();
+    if (workThread.joinable())
+	workThread.join();
+
+    #if defined Q_OS_LINUX || defined Q_OS_MAC
+        if (handle)
+            dlclose(handle);
+    #elif defined Q_OS_WIN32
+        if (handle)
+            FreeLibrary((HMODULE)handle);
+    #else
+        #error "Unknown target OS."
+    #endif
+}
+
+UnitsyncHandlerAsync::UnitsyncHandlerAsync(UnitsyncHandlerAsync&& h) : QObject(h.parent()),
+        logger(h.logger), ready(h.ready), handle(h.handle), queue(std::move(h.queue)) {
+
+    h.handle = NULL; // Quite an important line, if you ask me.
+
+    ${move_ctor_assignment}
+}
+
+// Returns a %-escaped string ready for use in a data URL.
+void UnitsyncHandlerAsync::jsReadFileVFS(QString __id, int fd, int size) {
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call jsReadFileVFS(", fd, ", ", size, ")");
+        // An astute reader might ask at this point "But ikinz, why in the world do you need that offset?"
+        // It turns out that on mingw from mingw-builds v4.8.1-posix-dwarf-rev5 using qt-5.2.0 in this very
+        // functions suddenly appears an unknown and unstoppable force that overwrites the first few bytes
+        // of readBuf with foul garbage. I spent a day in vain trying to discern its origins, but the force
+        // evaded the grasp of my sleep-deprived mind and humored me when I tried to allocate readBuf
+        // dynamically by causing a segfault in metacall. So I decided to submit to it and let it overwrite
+        // my buffers all it wants as long as it stays within the boundaries set by the offset.
+        //
+        // On a more serious note that's likely some obscure moc bug that also probably has something with
+        // threading since it segfaulted in a different thread. Whatever, faction icons seem to work on
+        // Windows now so I'm happy.
+        const int off = 100;
+        unsigned char readBuf[size + off];
+        if (fptr_ReadFileVFS(fd, readBuf + off, size) != size)
+            logger.warning("ReadFileVFS(): size mismatch");
+        std::string res;
+        char tmp[8];
+        for (int i = 0; i < size; i++) {
+            std::snprintf(tmp, 8, "%%%.2hhX", readBuf[i + off]);
+            res += tmp;
+        }
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "string", res));
+    });
+    queueCond.notify_all();
+}
+
+
+${public_methods_definitions_async}

@@ -201,6 +201,8 @@ UnitsyncHandlerAsync::UnitsyncHandlerAsync(QObject* parent, Logger& logger, boos
         fptr_lpGetIntKeyStrVal = (fptr_type_lpGetIntKeyStrVal)dlsym(handle, "lpGetIntKeyStrVal");
         fptr_lpGetStrKeyStrVal = (fptr_type_lpGetStrKeyStrVal)dlsym(handle, "lpGetStrKeyStrVal");
         fptr_ProcessUnitsNoChecksum = (fptr_type_ProcessUnitsNoChecksum)dlsym(handle, "ProcessUnitsNoChecksum");
+        fptr_GetMapInfoEx = (fptr_type_GetMapInfoEx)dlsym(handle, "GetMapInfoEx");
+        fptr_GetMapInfo = (fptr_type_GetMapInfo)dlsym(handle, "GetMapInfo");
         fptr_GetInfoValue = (fptr_type_GetInfoValue)dlsym(handle, "GetInfoValue");
         fptr_GetPrimaryModName = (fptr_type_GetPrimaryModName)dlsym(handle, "GetPrimaryModName");
         fptr_GetPrimaryModShortName = (fptr_type_GetPrimaryModShortName)dlsym(handle, "GetPrimaryModShortName");
@@ -372,6 +374,8 @@ UnitsyncHandlerAsync::UnitsyncHandlerAsync(QObject* parent, Logger& logger, boos
         fptr_lpGetIntKeyStrVal = (fptr_type_lpGetIntKeyStrVal)GetProcAddress((HMODULE)handle, "lpGetIntKeyStrVal");
         fptr_lpGetStrKeyStrVal = (fptr_type_lpGetStrKeyStrVal)GetProcAddress((HMODULE)handle, "lpGetStrKeyStrVal");
         fptr_ProcessUnitsNoChecksum = (fptr_type_ProcessUnitsNoChecksum)GetProcAddress((HMODULE)handle, "ProcessUnitsNoChecksum");
+        fptr_GetMapInfoEx = (fptr_type_GetMapInfoEx)GetProcAddress((HMODULE)handle, "GetMapInfoEx");
+        fptr_GetMapInfo = (fptr_type_GetMapInfo)GetProcAddress((HMODULE)handle, "GetMapInfo");
         fptr_GetInfoValue = (fptr_type_GetInfoValue)GetProcAddress((HMODULE)handle, "GetInfoValue");
         fptr_GetPrimaryModName = (fptr_type_GetPrimaryModName)GetProcAddress((HMODULE)handle, "GetPrimaryModName");
         fptr_GetPrimaryModShortName = (fptr_type_GetPrimaryModShortName)GetProcAddress((HMODULE)handle, "GetPrimaryModShortName");
@@ -567,6 +571,8 @@ UnitsyncHandlerAsync::UnitsyncHandlerAsync(UnitsyncHandlerAsync&& h) : QObject(h
     fptr_lpGetIntKeyStrVal = h.fptr_lpGetIntKeyStrVal;
     fptr_lpGetStrKeyStrVal = h.fptr_lpGetStrKeyStrVal;
     fptr_ProcessUnitsNoChecksum = h.fptr_ProcessUnitsNoChecksum;
+    fptr_GetMapInfoEx = h.fptr_GetMapInfoEx;
+    fptr_GetMapInfo = h.fptr_GetMapInfo;
     fptr_GetInfoValue = h.fptr_GetInfoValue;
     fptr_GetPrimaryModName = h.fptr_GetPrimaryModName;
     fptr_GetPrimaryModShortName = h.fptr_GetPrimaryModShortName;
@@ -579,31 +585,89 @@ UnitsyncHandlerAsync::UnitsyncHandlerAsync(UnitsyncHandlerAsync&& h) : QObject(h
 }
 
 // Returns a %-escaped string ready for use in a data URL.
-QString UnitsyncHandlerAsync::jsReadFileVFS(int fd, int size) {
-    // An astute reader might ask at this point "But ikinz, why in the world do you need that offset?"
-    // It turns out that on mingw from mingw-builds v4.8.1-posix-dwarf-rev5 using qt-5.2.0 in this very
-    // functions suddenly appears an unknown and unstoppable force that overwrites the first few bytes
-    // of readBuf with foul garbage. I spent a day in vain trying to discern its origins, but the force
-    // evaded the grasp of my sleep-deprived mind and humored me when I tried to allocate readBuf
-    // dynamically by causing a segfault in metacall. So I decided to submit to it and let it overwrite
-    // my buffers all it wants as long as it stays within the boundaries set by the offset.
-    //
-    // On a more serious note that's likely some obscure moc bug that also probably has something with
-    // threading since it segfaulted in a different thread. Whatever, faction icons seem to work on
-    // Windows now so I'm happy.
-    const int off = 100;
-    unsigned char readBuf[size + off];
-    if (fptr_ReadFileVFS(fd, readBuf + off, size) != size)
-        logger.warning("ReadFileVFS(): size mismatch");
-    QString res;
-    char tmp[8];
-    for (int i = 0; i < size; i++) {
-        std::snprintf(tmp, 8, "%%%.2hhX", readBuf[i + off]);
-        res += QString(tmp);
-    }
-    return res;
+void UnitsyncHandlerAsync::jsReadFileVFS(QString __id, int fd, int size) {
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call jsReadFileVFS(", fd, ", ", size, ")");
+        // An astute reader might ask at this point "But ikinz, why in the world do you need that offset?"
+        // It turns out that on mingw from mingw-builds v4.8.1-posix-dwarf-rev5 using qt-5.2.0 in this very
+        // functions suddenly appears an unknown and unstoppable force that overwrites the first few bytes
+        // of readBuf with foul garbage. I spent a day in vain trying to discern its origins, but the force
+        // evaded the grasp of my sleep-deprived mind and humored me when I tried to allocate readBuf
+        // dynamically by causing a segfault in metacall. So I decided to submit to it and let it overwrite
+        // my buffers all it wants as long as it stays within the boundaries set by the offset.
+        //
+        // On a more serious note that's likely some obscure moc bug that also probably has something with
+        // threading since it segfaulted in a different thread. Whatever, faction icons seem to work on
+        // Windows now so I'm happy.
+        const int off = 100;
+        unsigned char readBuf[size + off];
+        if (fptr_ReadFileVFS(fd, readBuf + off, size) != size)
+            logger.warning("ReadFileVFS(): size mismatch");
+        std::string res;
+        char tmp[8];
+        for (int i = 0; i < size; i++) {
+            std::snprintf(tmp, 8, "%%%.2hhX", readBuf[i + off]);
+            res += tmp;
+        }
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "string", res));
+    });
+    queueCond.notify_all();
 }
 
+
+void UnitsyncHandlerAsync::getNextError(QString __id) {
+    if (fptr_GetNextError == NULL) {
+        logger.error("Bad function pointer: GetNextError");
+        throw bad_fptr("GetNextError");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetNextError(", ")");
+        const char* res = fptr_GetNextError();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getSpringVersion(QString __id) {
+    if (fptr_GetSpringVersion == NULL) {
+        logger.error("Bad function pointer: GetSpringVersion");
+        throw bad_fptr("GetSpringVersion");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetSpringVersion(", ")");
+        const char* res = fptr_GetSpringVersion();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getSpringVersionPatchset(QString __id) {
+    if (fptr_GetSpringVersionPatchset == NULL) {
+        logger.error("Bad function pointer: GetSpringVersionPatchset");
+        throw bad_fptr("GetSpringVersionPatchset");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetSpringVersionPatchset(", ")");
+        const char* res = fptr_GetSpringVersionPatchset();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::isSpringReleaseVersion(QString __id) {
+    if (fptr_IsSpringReleaseVersion == NULL) {
+        logger.error("Bad function pointer: IsSpringReleaseVersion");
+        throw bad_fptr("IsSpringReleaseVersion");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call IsSpringReleaseVersion(", ")");
+        bool res = fptr_IsSpringReleaseVersion();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "bool", (res ? "true" : "false")));
+    });
+    queueCond.notify_all();
+}
 void UnitsyncHandlerAsync::init(QString __id, bool isServer, int id) {
     if (fptr_Init == NULL) {
         logger.error("Bad function pointer: Init");
@@ -612,35 +676,1957 @@ void UnitsyncHandlerAsync::init(QString __id, bool isServer, int id) {
     boost::unique_lock<boost::mutex> lock(queueMutex);
     queue.push([=](){
         logger.debug("call Init(", isServer, ", ", id, ")");
-        fptr_Init(isServer, id);
+        int res = fptr_Init(isServer, id);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::unInit(QString __id) {
+    if (fptr_UnInit == NULL) {
+        logger.error("Bad function pointer: UnInit");
+        throw bad_fptr("UnInit");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call UnInit(", ")");
+        fptr_UnInit();
         QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
     });
     queueCond.notify_all();
 }
-
-void UnitsyncHandlerAsync::getPrimaryModCount(QString __id) {
-    if (fptr_Init == NULL) {
-        logger.error("Bad function pointer: Init");
-        throw bad_fptr("Init");
+void UnitsyncHandlerAsync::getWritableDataDirectory(QString __id) {
+    if (fptr_GetWritableDataDirectory == NULL) {
+        logger.error("Bad function pointer: GetWritableDataDirectory");
+        throw bad_fptr("GetWritableDataDirectory");
     }
     boost::unique_lock<boost::mutex> lock(queueMutex);
     queue.push([=](){
-        logger.debug("call GetPrimaryModCount(",")");
+        logger.debug("call GetWritableDataDirectory(", ")");
+        const char* res = fptr_GetWritableDataDirectory();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getDataDirectoryCount(QString __id) {
+    if (fptr_GetDataDirectoryCount == NULL) {
+        logger.error("Bad function pointer: GetDataDirectoryCount");
+        throw bad_fptr("GetDataDirectoryCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetDataDirectoryCount(", ")");
+        int res = fptr_GetDataDirectoryCount();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getDataDirectory(QString __id, int index) {
+    if (fptr_GetDataDirectory == NULL) {
+        logger.error("Bad function pointer: GetDataDirectory");
+        throw bad_fptr("GetDataDirectory");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetDataDirectory(", index, ")");
+        const char* res = fptr_GetDataDirectory(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::processUnits(QString __id) {
+    if (fptr_ProcessUnits == NULL) {
+        logger.error("Bad function pointer: ProcessUnits");
+        throw bad_fptr("ProcessUnits");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call ProcessUnits(", ")");
+        int res = fptr_ProcessUnits();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getUnitCount(QString __id) {
+    if (fptr_GetUnitCount == NULL) {
+        logger.error("Bad function pointer: GetUnitCount");
+        throw bad_fptr("GetUnitCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetUnitCount(", ")");
+        int res = fptr_GetUnitCount();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getUnitName(QString __id, int unit) {
+    if (fptr_GetUnitName == NULL) {
+        logger.error("Bad function pointer: GetUnitName");
+        throw bad_fptr("GetUnitName");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetUnitName(", unit, ")");
+        const char* res = fptr_GetUnitName(unit);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getFullUnitName(QString __id, int unit) {
+    if (fptr_GetFullUnitName == NULL) {
+        logger.error("Bad function pointer: GetFullUnitName");
+        throw bad_fptr("GetFullUnitName");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetFullUnitName(", unit, ")");
+        const char* res = fptr_GetFullUnitName(unit);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::addArchive(QString __id, QString archiveName) {
+    if (fptr_AddArchive == NULL) {
+        logger.error("Bad function pointer: AddArchive");
+        throw bad_fptr("AddArchive");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call AddArchive(", archiveName.toStdString().c_str(), ")");
+        fptr_AddArchive(archiveName.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::addAllArchives(QString __id, QString rootArchiveName) {
+    if (fptr_AddAllArchives == NULL) {
+        logger.error("Bad function pointer: AddAllArchives");
+        throw bad_fptr("AddAllArchives");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call AddAllArchives(", rootArchiveName.toStdString().c_str(), ")");
+        fptr_AddAllArchives(rootArchiveName.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::removeAllArchives(QString __id) {
+    if (fptr_RemoveAllArchives == NULL) {
+        logger.error("Bad function pointer: RemoveAllArchives");
+        throw bad_fptr("RemoveAllArchives");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call RemoveAllArchives(", ")");
+        fptr_RemoveAllArchives();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getArchiveChecksum(QString __id, QString archiveName) {
+    if (fptr_GetArchiveChecksum == NULL) {
+        logger.error("Bad function pointer: GetArchiveChecksum");
+        throw bad_fptr("GetArchiveChecksum");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetArchiveChecksum(", archiveName.toStdString().c_str(), ")");
+        unsigned int res = fptr_GetArchiveChecksum(archiveName.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "unsigned int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getArchivePath(QString __id, QString archiveName) {
+    if (fptr_GetArchivePath == NULL) {
+        logger.error("Bad function pointer: GetArchivePath");
+        throw bad_fptr("GetArchivePath");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetArchivePath(", archiveName.toStdString().c_str(), ")");
+        const char* res = fptr_GetArchivePath(archiveName.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapCount(QString __id) {
+    if (fptr_GetMapCount == NULL) {
+        logger.error("Bad function pointer: GetMapCount");
+        throw bad_fptr("GetMapCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapCount(", ")");
+        int res = fptr_GetMapCount();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapName(QString __id, int index) {
+    if (fptr_GetMapName == NULL) {
+        logger.error("Bad function pointer: GetMapName");
+        throw bad_fptr("GetMapName");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapName(", index, ")");
+        const char* res = fptr_GetMapName(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapFileName(QString __id, int index) {
+    if (fptr_GetMapFileName == NULL) {
+        logger.error("Bad function pointer: GetMapFileName");
+        throw bad_fptr("GetMapFileName");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapFileName(", index, ")");
+        const char* res = fptr_GetMapFileName(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapDescription(QString __id, int index) {
+    if (fptr_GetMapDescription == NULL) {
+        logger.error("Bad function pointer: GetMapDescription");
+        throw bad_fptr("GetMapDescription");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapDescription(", index, ")");
+        const char* res = fptr_GetMapDescription(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapAuthor(QString __id, int index) {
+    if (fptr_GetMapAuthor == NULL) {
+        logger.error("Bad function pointer: GetMapAuthor");
+        throw bad_fptr("GetMapAuthor");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapAuthor(", index, ")");
+        const char* res = fptr_GetMapAuthor(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapWidth(QString __id, int index) {
+    if (fptr_GetMapWidth == NULL) {
+        logger.error("Bad function pointer: GetMapWidth");
+        throw bad_fptr("GetMapWidth");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapWidth(", index, ")");
+        int res = fptr_GetMapWidth(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapHeight(QString __id, int index) {
+    if (fptr_GetMapHeight == NULL) {
+        logger.error("Bad function pointer: GetMapHeight");
+        throw bad_fptr("GetMapHeight");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapHeight(", index, ")");
+        int res = fptr_GetMapHeight(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapTidalStrength(QString __id, int index) {
+    if (fptr_GetMapTidalStrength == NULL) {
+        logger.error("Bad function pointer: GetMapTidalStrength");
+        throw bad_fptr("GetMapTidalStrength");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapTidalStrength(", index, ")");
+        int res = fptr_GetMapTidalStrength(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapWindMin(QString __id, int index) {
+    if (fptr_GetMapWindMin == NULL) {
+        logger.error("Bad function pointer: GetMapWindMin");
+        throw bad_fptr("GetMapWindMin");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapWindMin(", index, ")");
+        int res = fptr_GetMapWindMin(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapWindMax(QString __id, int index) {
+    if (fptr_GetMapWindMax == NULL) {
+        logger.error("Bad function pointer: GetMapWindMax");
+        throw bad_fptr("GetMapWindMax");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapWindMax(", index, ")");
+        int res = fptr_GetMapWindMax(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapGravity(QString __id, int index) {
+    if (fptr_GetMapGravity == NULL) {
+        logger.error("Bad function pointer: GetMapGravity");
+        throw bad_fptr("GetMapGravity");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapGravity(", index, ")");
+        int res = fptr_GetMapGravity(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapResourceCount(QString __id, int index) {
+    if (fptr_GetMapResourceCount == NULL) {
+        logger.error("Bad function pointer: GetMapResourceCount");
+        throw bad_fptr("GetMapResourceCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapResourceCount(", index, ")");
+        int res = fptr_GetMapResourceCount(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapResourceName(QString __id, int index, int resourceIndex) {
+    if (fptr_GetMapResourceName == NULL) {
+        logger.error("Bad function pointer: GetMapResourceName");
+        throw bad_fptr("GetMapResourceName");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapResourceName(", index, ", ", resourceIndex, ")");
+        const char* res = fptr_GetMapResourceName(index, resourceIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapResourceMax(QString __id, int index, int resourceIndex) {
+    if (fptr_GetMapResourceMax == NULL) {
+        logger.error("Bad function pointer: GetMapResourceMax");
+        throw bad_fptr("GetMapResourceMax");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapResourceMax(", index, ", ", resourceIndex, ")");
+        float res = fptr_GetMapResourceMax(index, resourceIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "float", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapResourceExtractorRadius(QString __id, int index, int resourceIndex) {
+    if (fptr_GetMapResourceExtractorRadius == NULL) {
+        logger.error("Bad function pointer: GetMapResourceExtractorRadius");
+        throw bad_fptr("GetMapResourceExtractorRadius");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapResourceExtractorRadius(", index, ", ", resourceIndex, ")");
+        int res = fptr_GetMapResourceExtractorRadius(index, resourceIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapPosCount(QString __id, int index) {
+    if (fptr_GetMapPosCount == NULL) {
+        logger.error("Bad function pointer: GetMapPosCount");
+        throw bad_fptr("GetMapPosCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapPosCount(", index, ")");
+        int res = fptr_GetMapPosCount(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapPosX(QString __id, int index, int posIndex) {
+    if (fptr_GetMapPosX == NULL) {
+        logger.error("Bad function pointer: GetMapPosX");
+        throw bad_fptr("GetMapPosX");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapPosX(", index, ", ", posIndex, ")");
+        float res = fptr_GetMapPosX(index, posIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "float", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapPosZ(QString __id, int index, int posIndex) {
+    if (fptr_GetMapPosZ == NULL) {
+        logger.error("Bad function pointer: GetMapPosZ");
+        throw bad_fptr("GetMapPosZ");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapPosZ(", index, ", ", posIndex, ")");
+        float res = fptr_GetMapPosZ(index, posIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "float", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapMinHeight(QString __id, QString mapName) {
+    if (fptr_GetMapMinHeight == NULL) {
+        logger.error("Bad function pointer: GetMapMinHeight");
+        throw bad_fptr("GetMapMinHeight");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapMinHeight(", mapName.toStdString().c_str(), ")");
+        float res = fptr_GetMapMinHeight(mapName.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "float", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapMaxHeight(QString __id, QString mapName) {
+    if (fptr_GetMapMaxHeight == NULL) {
+        logger.error("Bad function pointer: GetMapMaxHeight");
+        throw bad_fptr("GetMapMaxHeight");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapMaxHeight(", mapName.toStdString().c_str(), ")");
+        float res = fptr_GetMapMaxHeight(mapName.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "float", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapArchiveCount(QString __id, QString mapName) {
+    if (fptr_GetMapArchiveCount == NULL) {
+        logger.error("Bad function pointer: GetMapArchiveCount");
+        throw bad_fptr("GetMapArchiveCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapArchiveCount(", mapName.toStdString().c_str(), ")");
+        int res = fptr_GetMapArchiveCount(mapName.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapArchiveName(QString __id, int index) {
+    if (fptr_GetMapArchiveName == NULL) {
+        logger.error("Bad function pointer: GetMapArchiveName");
+        throw bad_fptr("GetMapArchiveName");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapArchiveName(", index, ")");
+        const char* res = fptr_GetMapArchiveName(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapChecksum(QString __id, int index) {
+    if (fptr_GetMapChecksum == NULL) {
+        logger.error("Bad function pointer: GetMapChecksum");
+        throw bad_fptr("GetMapChecksum");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapChecksum(", index, ")");
+        unsigned int res = fptr_GetMapChecksum(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "unsigned int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapChecksumFromName(QString __id, QString mapName) {
+    if (fptr_GetMapChecksumFromName == NULL) {
+        logger.error("Bad function pointer: GetMapChecksumFromName");
+        throw bad_fptr("GetMapChecksumFromName");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapChecksumFromName(", mapName.toStdString().c_str(), ")");
+        unsigned int res = fptr_GetMapChecksumFromName(mapName.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "unsigned int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getSkirmishAICount(QString __id) {
+    if (fptr_GetSkirmishAICount == NULL) {
+        logger.error("Bad function pointer: GetSkirmishAICount");
+        throw bad_fptr("GetSkirmishAICount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetSkirmishAICount(", ")");
+        int res = fptr_GetSkirmishAICount();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getSkirmishAIInfoCount(QString __id, int index) {
+    if (fptr_GetSkirmishAIInfoCount == NULL) {
+        logger.error("Bad function pointer: GetSkirmishAIInfoCount");
+        throw bad_fptr("GetSkirmishAIInfoCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetSkirmishAIInfoCount(", index, ")");
+        int res = fptr_GetSkirmishAIInfoCount(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getInfoKey(QString __id, int index) {
+    if (fptr_GetInfoKey == NULL) {
+        logger.error("Bad function pointer: GetInfoKey");
+        throw bad_fptr("GetInfoKey");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetInfoKey(", index, ")");
+        const char* res = fptr_GetInfoKey(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getInfoType(QString __id, int index) {
+    if (fptr_GetInfoType == NULL) {
+        logger.error("Bad function pointer: GetInfoType");
+        throw bad_fptr("GetInfoType");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetInfoType(", index, ")");
+        const char* res = fptr_GetInfoType(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getInfoValueString(QString __id, int index) {
+    if (fptr_GetInfoValueString == NULL) {
+        logger.error("Bad function pointer: GetInfoValueString");
+        throw bad_fptr("GetInfoValueString");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetInfoValueString(", index, ")");
+        const char* res = fptr_GetInfoValueString(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getInfoValueInteger(QString __id, int index) {
+    if (fptr_GetInfoValueInteger == NULL) {
+        logger.error("Bad function pointer: GetInfoValueInteger");
+        throw bad_fptr("GetInfoValueInteger");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetInfoValueInteger(", index, ")");
+        int res = fptr_GetInfoValueInteger(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getInfoValueFloat(QString __id, int index) {
+    if (fptr_GetInfoValueFloat == NULL) {
+        logger.error("Bad function pointer: GetInfoValueFloat");
+        throw bad_fptr("GetInfoValueFloat");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetInfoValueFloat(", index, ")");
+        float res = fptr_GetInfoValueFloat(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "float", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getInfoValueBool(QString __id, int index) {
+    if (fptr_GetInfoValueBool == NULL) {
+        logger.error("Bad function pointer: GetInfoValueBool");
+        throw bad_fptr("GetInfoValueBool");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetInfoValueBool(", index, ")");
+        bool res = fptr_GetInfoValueBool(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "bool", (res ? "true" : "false")));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getInfoDescription(QString __id, int index) {
+    if (fptr_GetInfoDescription == NULL) {
+        logger.error("Bad function pointer: GetInfoDescription");
+        throw bad_fptr("GetInfoDescription");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetInfoDescription(", index, ")");
+        const char* res = fptr_GetInfoDescription(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getSkirmishAIOptionCount(QString __id, int index) {
+    if (fptr_GetSkirmishAIOptionCount == NULL) {
+        logger.error("Bad function pointer: GetSkirmishAIOptionCount");
+        throw bad_fptr("GetSkirmishAIOptionCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetSkirmishAIOptionCount(", index, ")");
+        int res = fptr_GetSkirmishAIOptionCount(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getPrimaryModCount(QString __id) {
+    if (fptr_GetPrimaryModCount == NULL) {
+        logger.error("Bad function pointer: GetPrimaryModCount");
+        throw bad_fptr("GetPrimaryModCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetPrimaryModCount(", ")");
         int res = fptr_GetPrimaryModCount();
         QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
     });
     queueCond.notify_all();
 }
-
-void UnitsyncHandlerAsync::getMapCount(QString __id) {
-    if (fptr_Init == NULL) {
-        logger.error("Bad function pointer: Init");
-        throw bad_fptr("Init");
+void UnitsyncHandlerAsync::getPrimaryModInfoCount(QString __id, int index) {
+    if (fptr_GetPrimaryModInfoCount == NULL) {
+        logger.error("Bad function pointer: GetPrimaryModInfoCount");
+        throw bad_fptr("GetPrimaryModInfoCount");
     }
     boost::unique_lock<boost::mutex> lock(queueMutex);
     queue.push([=](){
-        logger.debug("call GetMapCount(",")");
-        int res = fptr_GetMapCount();
+        logger.debug("call GetPrimaryModInfoCount(", index, ")");
+        int res = fptr_GetPrimaryModInfoCount(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getPrimaryModArchive(QString __id, int index) {
+    if (fptr_GetPrimaryModArchive == NULL) {
+        logger.error("Bad function pointer: GetPrimaryModArchive");
+        throw bad_fptr("GetPrimaryModArchive");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetPrimaryModArchive(", index, ")");
+        const char* res = fptr_GetPrimaryModArchive(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getPrimaryModArchiveCount(QString __id, int index) {
+    if (fptr_GetPrimaryModArchiveCount == NULL) {
+        logger.error("Bad function pointer: GetPrimaryModArchiveCount");
+        throw bad_fptr("GetPrimaryModArchiveCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetPrimaryModArchiveCount(", index, ")");
+        int res = fptr_GetPrimaryModArchiveCount(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getPrimaryModArchiveList(QString __id, int archive) {
+    if (fptr_GetPrimaryModArchiveList == NULL) {
+        logger.error("Bad function pointer: GetPrimaryModArchiveList");
+        throw bad_fptr("GetPrimaryModArchiveList");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetPrimaryModArchiveList(", archive, ")");
+        const char* res = fptr_GetPrimaryModArchiveList(archive);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getPrimaryModIndex(QString __id, QString name) {
+    if (fptr_GetPrimaryModIndex == NULL) {
+        logger.error("Bad function pointer: GetPrimaryModIndex");
+        throw bad_fptr("GetPrimaryModIndex");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetPrimaryModIndex(", name.toStdString().c_str(), ")");
+        int res = fptr_GetPrimaryModIndex(name.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getPrimaryModChecksum(QString __id, int index) {
+    if (fptr_GetPrimaryModChecksum == NULL) {
+        logger.error("Bad function pointer: GetPrimaryModChecksum");
+        throw bad_fptr("GetPrimaryModChecksum");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetPrimaryModChecksum(", index, ")");
+        unsigned int res = fptr_GetPrimaryModChecksum(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "unsigned int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getPrimaryModChecksumFromName(QString __id, QString name) {
+    if (fptr_GetPrimaryModChecksumFromName == NULL) {
+        logger.error("Bad function pointer: GetPrimaryModChecksumFromName");
+        throw bad_fptr("GetPrimaryModChecksumFromName");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetPrimaryModChecksumFromName(", name.toStdString().c_str(), ")");
+        unsigned int res = fptr_GetPrimaryModChecksumFromName(name.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "unsigned int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getSideCount(QString __id) {
+    if (fptr_GetSideCount == NULL) {
+        logger.error("Bad function pointer: GetSideCount");
+        throw bad_fptr("GetSideCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetSideCount(", ")");
+        int res = fptr_GetSideCount();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getSideName(QString __id, int side) {
+    if (fptr_GetSideName == NULL) {
+        logger.error("Bad function pointer: GetSideName");
+        throw bad_fptr("GetSideName");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetSideName(", side, ")");
+        const char* res = fptr_GetSideName(side);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getSideStartUnit(QString __id, int side) {
+    if (fptr_GetSideStartUnit == NULL) {
+        logger.error("Bad function pointer: GetSideStartUnit");
+        throw bad_fptr("GetSideStartUnit");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetSideStartUnit(", side, ")");
+        const char* res = fptr_GetSideStartUnit(side);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getMapOptionCount(QString __id, QString mapName) {
+    if (fptr_GetMapOptionCount == NULL) {
+        logger.error("Bad function pointer: GetMapOptionCount");
+        throw bad_fptr("GetMapOptionCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetMapOptionCount(", mapName.toStdString().c_str(), ")");
+        int res = fptr_GetMapOptionCount(mapName.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getModOptionCount(QString __id) {
+    if (fptr_GetModOptionCount == NULL) {
+        logger.error("Bad function pointer: GetModOptionCount");
+        throw bad_fptr("GetModOptionCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetModOptionCount(", ")");
+        int res = fptr_GetModOptionCount();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getCustomOptionCount(QString __id, QString fileName) {
+    if (fptr_GetCustomOptionCount == NULL) {
+        logger.error("Bad function pointer: GetCustomOptionCount");
+        throw bad_fptr("GetCustomOptionCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetCustomOptionCount(", fileName.toStdString().c_str(), ")");
+        int res = fptr_GetCustomOptionCount(fileName.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionKey(QString __id, int optIndex) {
+    if (fptr_GetOptionKey == NULL) {
+        logger.error("Bad function pointer: GetOptionKey");
+        throw bad_fptr("GetOptionKey");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionKey(", optIndex, ")");
+        const char* res = fptr_GetOptionKey(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionScope(QString __id, int optIndex) {
+    if (fptr_GetOptionScope == NULL) {
+        logger.error("Bad function pointer: GetOptionScope");
+        throw bad_fptr("GetOptionScope");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionScope(", optIndex, ")");
+        const char* res = fptr_GetOptionScope(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionName(QString __id, int optIndex) {
+    if (fptr_GetOptionName == NULL) {
+        logger.error("Bad function pointer: GetOptionName");
+        throw bad_fptr("GetOptionName");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionName(", optIndex, ")");
+        const char* res = fptr_GetOptionName(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionSection(QString __id, int optIndex) {
+    if (fptr_GetOptionSection == NULL) {
+        logger.error("Bad function pointer: GetOptionSection");
+        throw bad_fptr("GetOptionSection");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionSection(", optIndex, ")");
+        const char* res = fptr_GetOptionSection(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionStyle(QString __id, int optIndex) {
+    if (fptr_GetOptionStyle == NULL) {
+        logger.error("Bad function pointer: GetOptionStyle");
+        throw bad_fptr("GetOptionStyle");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionStyle(", optIndex, ")");
+        const char* res = fptr_GetOptionStyle(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionDesc(QString __id, int optIndex) {
+    if (fptr_GetOptionDesc == NULL) {
+        logger.error("Bad function pointer: GetOptionDesc");
+        throw bad_fptr("GetOptionDesc");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionDesc(", optIndex, ")");
+        const char* res = fptr_GetOptionDesc(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionType(QString __id, int optIndex) {
+    if (fptr_GetOptionType == NULL) {
+        logger.error("Bad function pointer: GetOptionType");
+        throw bad_fptr("GetOptionType");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionType(", optIndex, ")");
+        int res = fptr_GetOptionType(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionBoolDef(QString __id, int optIndex) {
+    if (fptr_GetOptionBoolDef == NULL) {
+        logger.error("Bad function pointer: GetOptionBoolDef");
+        throw bad_fptr("GetOptionBoolDef");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionBoolDef(", optIndex, ")");
+        int res = fptr_GetOptionBoolDef(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionNumberDef(QString __id, int optIndex) {
+    if (fptr_GetOptionNumberDef == NULL) {
+        logger.error("Bad function pointer: GetOptionNumberDef");
+        throw bad_fptr("GetOptionNumberDef");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionNumberDef(", optIndex, ")");
+        float res = fptr_GetOptionNumberDef(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "float", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionNumberMin(QString __id, int optIndex) {
+    if (fptr_GetOptionNumberMin == NULL) {
+        logger.error("Bad function pointer: GetOptionNumberMin");
+        throw bad_fptr("GetOptionNumberMin");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionNumberMin(", optIndex, ")");
+        float res = fptr_GetOptionNumberMin(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "float", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionNumberMax(QString __id, int optIndex) {
+    if (fptr_GetOptionNumberMax == NULL) {
+        logger.error("Bad function pointer: GetOptionNumberMax");
+        throw bad_fptr("GetOptionNumberMax");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionNumberMax(", optIndex, ")");
+        float res = fptr_GetOptionNumberMax(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "float", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionNumberStep(QString __id, int optIndex) {
+    if (fptr_GetOptionNumberStep == NULL) {
+        logger.error("Bad function pointer: GetOptionNumberStep");
+        throw bad_fptr("GetOptionNumberStep");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionNumberStep(", optIndex, ")");
+        float res = fptr_GetOptionNumberStep(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "float", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionStringDef(QString __id, int optIndex) {
+    if (fptr_GetOptionStringDef == NULL) {
+        logger.error("Bad function pointer: GetOptionStringDef");
+        throw bad_fptr("GetOptionStringDef");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionStringDef(", optIndex, ")");
+        const char* res = fptr_GetOptionStringDef(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionStringMaxLen(QString __id, int optIndex) {
+    if (fptr_GetOptionStringMaxLen == NULL) {
+        logger.error("Bad function pointer: GetOptionStringMaxLen");
+        throw bad_fptr("GetOptionStringMaxLen");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionStringMaxLen(", optIndex, ")");
+        int res = fptr_GetOptionStringMaxLen(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionListCount(QString __id, int optIndex) {
+    if (fptr_GetOptionListCount == NULL) {
+        logger.error("Bad function pointer: GetOptionListCount");
+        throw bad_fptr("GetOptionListCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionListCount(", optIndex, ")");
+        int res = fptr_GetOptionListCount(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionListDef(QString __id, int optIndex) {
+    if (fptr_GetOptionListDef == NULL) {
+        logger.error("Bad function pointer: GetOptionListDef");
+        throw bad_fptr("GetOptionListDef");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionListDef(", optIndex, ")");
+        const char* res = fptr_GetOptionListDef(optIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionListItemKey(QString __id, int optIndex, int itemIndex) {
+    if (fptr_GetOptionListItemKey == NULL) {
+        logger.error("Bad function pointer: GetOptionListItemKey");
+        throw bad_fptr("GetOptionListItemKey");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionListItemKey(", optIndex, ", ", itemIndex, ")");
+        const char* res = fptr_GetOptionListItemKey(optIndex, itemIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionListItemName(QString __id, int optIndex, int itemIndex) {
+    if (fptr_GetOptionListItemName == NULL) {
+        logger.error("Bad function pointer: GetOptionListItemName");
+        throw bad_fptr("GetOptionListItemName");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionListItemName(", optIndex, ", ", itemIndex, ")");
+        const char* res = fptr_GetOptionListItemName(optIndex, itemIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getOptionListItemDesc(QString __id, int optIndex, int itemIndex) {
+    if (fptr_GetOptionListItemDesc == NULL) {
+        logger.error("Bad function pointer: GetOptionListItemDesc");
+        throw bad_fptr("GetOptionListItemDesc");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetOptionListItemDesc(", optIndex, ", ", itemIndex, ")");
+        const char* res = fptr_GetOptionListItemDesc(optIndex, itemIndex);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getModValidMapCount(QString __id) {
+    if (fptr_GetModValidMapCount == NULL) {
+        logger.error("Bad function pointer: GetModValidMapCount");
+        throw bad_fptr("GetModValidMapCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetModValidMapCount(", ")");
+        int res = fptr_GetModValidMapCount();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getModValidMap(QString __id, int index) {
+    if (fptr_GetModValidMap == NULL) {
+        logger.error("Bad function pointer: GetModValidMap");
+        throw bad_fptr("GetModValidMap");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetModValidMap(", index, ")");
+        const char* res = fptr_GetModValidMap(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::openFileVFS(QString __id, QString name) {
+    if (fptr_OpenFileVFS == NULL) {
+        logger.error("Bad function pointer: OpenFileVFS");
+        throw bad_fptr("OpenFileVFS");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call OpenFileVFS(", name.toStdString().c_str(), ")");
+        int res = fptr_OpenFileVFS(name.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::closeFileVFS(QString __id, int file) {
+    if (fptr_CloseFileVFS == NULL) {
+        logger.error("Bad function pointer: CloseFileVFS");
+        throw bad_fptr("CloseFileVFS");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call CloseFileVFS(", file, ")");
+        fptr_CloseFileVFS(file);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::fileSizeVFS(QString __id, int file) {
+    if (fptr_FileSizeVFS == NULL) {
+        logger.error("Bad function pointer: FileSizeVFS");
+        throw bad_fptr("FileSizeVFS");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call FileSizeVFS(", file, ")");
+        int res = fptr_FileSizeVFS(file);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::initFindVFS(QString __id, QString pattern) {
+    if (fptr_InitFindVFS == NULL) {
+        logger.error("Bad function pointer: InitFindVFS");
+        throw bad_fptr("InitFindVFS");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call InitFindVFS(", pattern.toStdString().c_str(), ")");
+        int res = fptr_InitFindVFS(pattern.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::initDirListVFS(QString __id, QString path, QString pattern, QString modes) {
+    if (fptr_InitDirListVFS == NULL) {
+        logger.error("Bad function pointer: InitDirListVFS");
+        throw bad_fptr("InitDirListVFS");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call InitDirListVFS(", path.toStdString().c_str(), ", ", pattern.toStdString().c_str(), ", ", modes.toStdString().c_str(), ")");
+        int res = fptr_InitDirListVFS(path.toStdString().c_str(), pattern.toStdString().c_str(), modes.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::initSubDirsVFS(QString __id, QString path, QString pattern, QString modes) {
+    if (fptr_InitSubDirsVFS == NULL) {
+        logger.error("Bad function pointer: InitSubDirsVFS");
+        throw bad_fptr("InitSubDirsVFS");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call InitSubDirsVFS(", path.toStdString().c_str(), ", ", pattern.toStdString().c_str(), ", ", modes.toStdString().c_str(), ")");
+        int res = fptr_InitSubDirsVFS(path.toStdString().c_str(), pattern.toStdString().c_str(), modes.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::openArchive(QString __id, QString name) {
+    if (fptr_OpenArchive == NULL) {
+        logger.error("Bad function pointer: OpenArchive");
+        throw bad_fptr("OpenArchive");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call OpenArchive(", name.toStdString().c_str(), ")");
+        int res = fptr_OpenArchive(name.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::closeArchive(QString __id, int archive) {
+    if (fptr_CloseArchive == NULL) {
+        logger.error("Bad function pointer: CloseArchive");
+        throw bad_fptr("CloseArchive");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call CloseArchive(", archive, ")");
+        fptr_CloseArchive(archive);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::openArchiveFile(QString __id, int archive, QString name) {
+    if (fptr_OpenArchiveFile == NULL) {
+        logger.error("Bad function pointer: OpenArchiveFile");
+        throw bad_fptr("OpenArchiveFile");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call OpenArchiveFile(", archive, ", ", name.toStdString().c_str(), ")");
+        int res = fptr_OpenArchiveFile(archive, name.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::closeArchiveFile(QString __id, int archive, int file) {
+    if (fptr_CloseArchiveFile == NULL) {
+        logger.error("Bad function pointer: CloseArchiveFile");
+        throw bad_fptr("CloseArchiveFile");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call CloseArchiveFile(", archive, ", ", file, ")");
+        fptr_CloseArchiveFile(archive, file);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::sizeArchiveFile(QString __id, int archive, int file) {
+    if (fptr_SizeArchiveFile == NULL) {
+        logger.error("Bad function pointer: SizeArchiveFile");
+        throw bad_fptr("SizeArchiveFile");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call SizeArchiveFile(", archive, ", ", file, ")");
+        int res = fptr_SizeArchiveFile(archive, file);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::setSpringConfigFile(QString __id, QString fileNameAsAbsolutePath) {
+    if (fptr_SetSpringConfigFile == NULL) {
+        logger.error("Bad function pointer: SetSpringConfigFile");
+        throw bad_fptr("SetSpringConfigFile");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call SetSpringConfigFile(", fileNameAsAbsolutePath.toStdString().c_str(), ")");
+        fptr_SetSpringConfigFile(fileNameAsAbsolutePath.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getSpringConfigFile(QString __id) {
+    if (fptr_GetSpringConfigFile == NULL) {
+        logger.error("Bad function pointer: GetSpringConfigFile");
+        throw bad_fptr("GetSpringConfigFile");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetSpringConfigFile(", ")");
+        const char* res = fptr_GetSpringConfigFile();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getSpringConfigString(QString __id, QString name, QString defValue) {
+    if (fptr_GetSpringConfigString == NULL) {
+        logger.error("Bad function pointer: GetSpringConfigString");
+        throw bad_fptr("GetSpringConfigString");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetSpringConfigString(", name.toStdString().c_str(), ", ", defValue.toStdString().c_str(), ")");
+        const char* res = fptr_GetSpringConfigString(name.toStdString().c_str(), defValue.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getSpringConfigInt(QString __id, QString name, int defValue) {
+    if (fptr_GetSpringConfigInt == NULL) {
+        logger.error("Bad function pointer: GetSpringConfigInt");
+        throw bad_fptr("GetSpringConfigInt");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetSpringConfigInt(", name.toStdString().c_str(), ", ", defValue, ")");
+        int res = fptr_GetSpringConfigInt(name.toStdString().c_str(), defValue);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getSpringConfigFloat(QString __id, QString name, float defValue) {
+    if (fptr_GetSpringConfigFloat == NULL) {
+        logger.error("Bad function pointer: GetSpringConfigFloat");
+        throw bad_fptr("GetSpringConfigFloat");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetSpringConfigFloat(", name.toStdString().c_str(), ", ", defValue, ")");
+        float res = fptr_GetSpringConfigFloat(name.toStdString().c_str(), defValue);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "float", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::setSpringConfigString(QString __id, QString name, QString value) {
+    if (fptr_SetSpringConfigString == NULL) {
+        logger.error("Bad function pointer: SetSpringConfigString");
+        throw bad_fptr("SetSpringConfigString");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call SetSpringConfigString(", name.toStdString().c_str(), ", ", value.toStdString().c_str(), ")");
+        fptr_SetSpringConfigString(name.toStdString().c_str(), value.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::setSpringConfigInt(QString __id, QString name, int value) {
+    if (fptr_SetSpringConfigInt == NULL) {
+        logger.error("Bad function pointer: SetSpringConfigInt");
+        throw bad_fptr("SetSpringConfigInt");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call SetSpringConfigInt(", name.toStdString().c_str(), ", ", value, ")");
+        fptr_SetSpringConfigInt(name.toStdString().c_str(), value);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::setSpringConfigFloat(QString __id, QString name, float value) {
+    if (fptr_SetSpringConfigFloat == NULL) {
+        logger.error("Bad function pointer: SetSpringConfigFloat");
+        throw bad_fptr("SetSpringConfigFloat");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call SetSpringConfigFloat(", name.toStdString().c_str(), ", ", value, ")");
+        fptr_SetSpringConfigFloat(name.toStdString().c_str(), value);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::deleteSpringConfigKey(QString __id, QString name) {
+    if (fptr_DeleteSpringConfigKey == NULL) {
+        logger.error("Bad function pointer: DeleteSpringConfigKey");
+        throw bad_fptr("DeleteSpringConfigKey");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call DeleteSpringConfigKey(", name.toStdString().c_str(), ")");
+        fptr_DeleteSpringConfigKey(name.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpClose(QString __id) {
+    if (fptr_lpClose == NULL) {
+        logger.error("Bad function pointer: lpClose");
+        throw bad_fptr("lpClose");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpClose(", ")");
+        fptr_lpClose();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpOpenFile(QString __id, QString fileName, QString fileModes, QString accessModes) {
+    if (fptr_lpOpenFile == NULL) {
+        logger.error("Bad function pointer: lpOpenFile");
+        throw bad_fptr("lpOpenFile");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpOpenFile(", fileName.toStdString().c_str(), ", ", fileModes.toStdString().c_str(), ", ", accessModes.toStdString().c_str(), ")");
+        int res = fptr_lpOpenFile(fileName.toStdString().c_str(), fileModes.toStdString().c_str(), accessModes.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpOpenSource(QString __id, QString source, QString accessModes) {
+    if (fptr_lpOpenSource == NULL) {
+        logger.error("Bad function pointer: lpOpenSource");
+        throw bad_fptr("lpOpenSource");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpOpenSource(", source.toStdString().c_str(), ", ", accessModes.toStdString().c_str(), ")");
+        int res = fptr_lpOpenSource(source.toStdString().c_str(), accessModes.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpExecute(QString __id) {
+    if (fptr_lpExecute == NULL) {
+        logger.error("Bad function pointer: lpExecute");
+        throw bad_fptr("lpExecute");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpExecute(", ")");
+        int res = fptr_lpExecute();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpErrorLog(QString __id) {
+    if (fptr_lpErrorLog == NULL) {
+        logger.error("Bad function pointer: lpErrorLog");
+        throw bad_fptr("lpErrorLog");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpErrorLog(", ")");
+        const char* res = fptr_lpErrorLog();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpAddTableInt(QString __id, int key, int override) {
+    if (fptr_lpAddTableInt == NULL) {
+        logger.error("Bad function pointer: lpAddTableInt");
+        throw bad_fptr("lpAddTableInt");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpAddTableInt(", key, ", ", override, ")");
+        fptr_lpAddTableInt(key, override);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpAddTableStr(QString __id, QString key, int override) {
+    if (fptr_lpAddTableStr == NULL) {
+        logger.error("Bad function pointer: lpAddTableStr");
+        throw bad_fptr("lpAddTableStr");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpAddTableStr(", key.toStdString().c_str(), ", ", override, ")");
+        fptr_lpAddTableStr(key.toStdString().c_str(), override);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpEndTable(QString __id) {
+    if (fptr_lpEndTable == NULL) {
+        logger.error("Bad function pointer: lpEndTable");
+        throw bad_fptr("lpEndTable");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpEndTable(", ")");
+        fptr_lpEndTable();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpAddIntKeyIntVal(QString __id, int key, int value) {
+    if (fptr_lpAddIntKeyIntVal == NULL) {
+        logger.error("Bad function pointer: lpAddIntKeyIntVal");
+        throw bad_fptr("lpAddIntKeyIntVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpAddIntKeyIntVal(", key, ", ", value, ")");
+        fptr_lpAddIntKeyIntVal(key, value);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpAddStrKeyIntVal(QString __id, QString key, int value) {
+    if (fptr_lpAddStrKeyIntVal == NULL) {
+        logger.error("Bad function pointer: lpAddStrKeyIntVal");
+        throw bad_fptr("lpAddStrKeyIntVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpAddStrKeyIntVal(", key.toStdString().c_str(), ", ", value, ")");
+        fptr_lpAddStrKeyIntVal(key.toStdString().c_str(), value);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpAddIntKeyBoolVal(QString __id, int key, int value) {
+    if (fptr_lpAddIntKeyBoolVal == NULL) {
+        logger.error("Bad function pointer: lpAddIntKeyBoolVal");
+        throw bad_fptr("lpAddIntKeyBoolVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpAddIntKeyBoolVal(", key, ", ", value, ")");
+        fptr_lpAddIntKeyBoolVal(key, value);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpAddStrKeyBoolVal(QString __id, QString key, int value) {
+    if (fptr_lpAddStrKeyBoolVal == NULL) {
+        logger.error("Bad function pointer: lpAddStrKeyBoolVal");
+        throw bad_fptr("lpAddStrKeyBoolVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpAddStrKeyBoolVal(", key.toStdString().c_str(), ", ", value, ")");
+        fptr_lpAddStrKeyBoolVal(key.toStdString().c_str(), value);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpAddIntKeyFloatVal(QString __id, int key, float value) {
+    if (fptr_lpAddIntKeyFloatVal == NULL) {
+        logger.error("Bad function pointer: lpAddIntKeyFloatVal");
+        throw bad_fptr("lpAddIntKeyFloatVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpAddIntKeyFloatVal(", key, ", ", value, ")");
+        fptr_lpAddIntKeyFloatVal(key, value);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpAddStrKeyFloatVal(QString __id, QString key, float value) {
+    if (fptr_lpAddStrKeyFloatVal == NULL) {
+        logger.error("Bad function pointer: lpAddStrKeyFloatVal");
+        throw bad_fptr("lpAddStrKeyFloatVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpAddStrKeyFloatVal(", key.toStdString().c_str(), ", ", value, ")");
+        fptr_lpAddStrKeyFloatVal(key.toStdString().c_str(), value);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpAddIntKeyStrVal(QString __id, int key, QString value) {
+    if (fptr_lpAddIntKeyStrVal == NULL) {
+        logger.error("Bad function pointer: lpAddIntKeyStrVal");
+        throw bad_fptr("lpAddIntKeyStrVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpAddIntKeyStrVal(", key, ", ", value.toStdString().c_str(), ")");
+        fptr_lpAddIntKeyStrVal(key, value.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpAddStrKeyStrVal(QString __id, QString key, QString value) {
+    if (fptr_lpAddStrKeyStrVal == NULL) {
+        logger.error("Bad function pointer: lpAddStrKeyStrVal");
+        throw bad_fptr("lpAddStrKeyStrVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpAddStrKeyStrVal(", key.toStdString().c_str(), ", ", value.toStdString().c_str(), ")");
+        fptr_lpAddStrKeyStrVal(key.toStdString().c_str(), value.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpRootTable(QString __id) {
+    if (fptr_lpRootTable == NULL) {
+        logger.error("Bad function pointer: lpRootTable");
+        throw bad_fptr("lpRootTable");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpRootTable(", ")");
+        int res = fptr_lpRootTable();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpRootTableExpr(QString __id, QString expr) {
+    if (fptr_lpRootTableExpr == NULL) {
+        logger.error("Bad function pointer: lpRootTableExpr");
+        throw bad_fptr("lpRootTableExpr");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpRootTableExpr(", expr.toStdString().c_str(), ")");
+        int res = fptr_lpRootTableExpr(expr.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpSubTableInt(QString __id, int key) {
+    if (fptr_lpSubTableInt == NULL) {
+        logger.error("Bad function pointer: lpSubTableInt");
+        throw bad_fptr("lpSubTableInt");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpSubTableInt(", key, ")");
+        int res = fptr_lpSubTableInt(key);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpSubTableStr(QString __id, QString key) {
+    if (fptr_lpSubTableStr == NULL) {
+        logger.error("Bad function pointer: lpSubTableStr");
+        throw bad_fptr("lpSubTableStr");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpSubTableStr(", key.toStdString().c_str(), ")");
+        int res = fptr_lpSubTableStr(key.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpSubTableExpr(QString __id, QString expr) {
+    if (fptr_lpSubTableExpr == NULL) {
+        logger.error("Bad function pointer: lpSubTableExpr");
+        throw bad_fptr("lpSubTableExpr");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpSubTableExpr(", expr.toStdString().c_str(), ")");
+        int res = fptr_lpSubTableExpr(expr.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpPopTable(QString __id) {
+    if (fptr_lpPopTable == NULL) {
+        logger.error("Bad function pointer: lpPopTable");
+        throw bad_fptr("lpPopTable");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpPopTable(", ")");
+        fptr_lpPopTable();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "void", ""));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetKeyExistsInt(QString __id, int key) {
+    if (fptr_lpGetKeyExistsInt == NULL) {
+        logger.error("Bad function pointer: lpGetKeyExistsInt");
+        throw bad_fptr("lpGetKeyExistsInt");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetKeyExistsInt(", key, ")");
+        int res = fptr_lpGetKeyExistsInt(key);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetKeyExistsStr(QString __id, QString key) {
+    if (fptr_lpGetKeyExistsStr == NULL) {
+        logger.error("Bad function pointer: lpGetKeyExistsStr");
+        throw bad_fptr("lpGetKeyExistsStr");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetKeyExistsStr(", key.toStdString().c_str(), ")");
+        int res = fptr_lpGetKeyExistsStr(key.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetIntKeyType(QString __id, int key) {
+    if (fptr_lpGetIntKeyType == NULL) {
+        logger.error("Bad function pointer: lpGetIntKeyType");
+        throw bad_fptr("lpGetIntKeyType");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetIntKeyType(", key, ")");
+        int res = fptr_lpGetIntKeyType(key);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetStrKeyType(QString __id, QString key) {
+    if (fptr_lpGetStrKeyType == NULL) {
+        logger.error("Bad function pointer: lpGetStrKeyType");
+        throw bad_fptr("lpGetStrKeyType");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetStrKeyType(", key.toStdString().c_str(), ")");
+        int res = fptr_lpGetStrKeyType(key.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetIntKeyListCount(QString __id) {
+    if (fptr_lpGetIntKeyListCount == NULL) {
+        logger.error("Bad function pointer: lpGetIntKeyListCount");
+        throw bad_fptr("lpGetIntKeyListCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetIntKeyListCount(", ")");
+        int res = fptr_lpGetIntKeyListCount();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetIntKeyListEntry(QString __id, int index) {
+    if (fptr_lpGetIntKeyListEntry == NULL) {
+        logger.error("Bad function pointer: lpGetIntKeyListEntry");
+        throw bad_fptr("lpGetIntKeyListEntry");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetIntKeyListEntry(", index, ")");
+        int res = fptr_lpGetIntKeyListEntry(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetStrKeyListCount(QString __id) {
+    if (fptr_lpGetStrKeyListCount == NULL) {
+        logger.error("Bad function pointer: lpGetStrKeyListCount");
+        throw bad_fptr("lpGetStrKeyListCount");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetStrKeyListCount(", ")");
+        int res = fptr_lpGetStrKeyListCount();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetStrKeyListEntry(QString __id, int index) {
+    if (fptr_lpGetStrKeyListEntry == NULL) {
+        logger.error("Bad function pointer: lpGetStrKeyListEntry");
+        throw bad_fptr("lpGetStrKeyListEntry");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetStrKeyListEntry(", index, ")");
+        const char* res = fptr_lpGetStrKeyListEntry(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetIntKeyIntVal(QString __id, int key, int defValue) {
+    if (fptr_lpGetIntKeyIntVal == NULL) {
+        logger.error("Bad function pointer: lpGetIntKeyIntVal");
+        throw bad_fptr("lpGetIntKeyIntVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetIntKeyIntVal(", key, ", ", defValue, ")");
+        int res = fptr_lpGetIntKeyIntVal(key, defValue);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetStrKeyIntVal(QString __id, QString key, int defValue) {
+    if (fptr_lpGetStrKeyIntVal == NULL) {
+        logger.error("Bad function pointer: lpGetStrKeyIntVal");
+        throw bad_fptr("lpGetStrKeyIntVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetStrKeyIntVal(", key.toStdString().c_str(), ", ", defValue, ")");
+        int res = fptr_lpGetStrKeyIntVal(key.toStdString().c_str(), defValue);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetIntKeyBoolVal(QString __id, int key, int defValue) {
+    if (fptr_lpGetIntKeyBoolVal == NULL) {
+        logger.error("Bad function pointer: lpGetIntKeyBoolVal");
+        throw bad_fptr("lpGetIntKeyBoolVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetIntKeyBoolVal(", key, ", ", defValue, ")");
+        int res = fptr_lpGetIntKeyBoolVal(key, defValue);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetStrKeyBoolVal(QString __id, QString key, int defValue) {
+    if (fptr_lpGetStrKeyBoolVal == NULL) {
+        logger.error("Bad function pointer: lpGetStrKeyBoolVal");
+        throw bad_fptr("lpGetStrKeyBoolVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetStrKeyBoolVal(", key.toStdString().c_str(), ", ", defValue, ")");
+        int res = fptr_lpGetStrKeyBoolVal(key.toStdString().c_str(), defValue);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetIntKeyFloatVal(QString __id, int key, float defValue) {
+    if (fptr_lpGetIntKeyFloatVal == NULL) {
+        logger.error("Bad function pointer: lpGetIntKeyFloatVal");
+        throw bad_fptr("lpGetIntKeyFloatVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetIntKeyFloatVal(", key, ", ", defValue, ")");
+        float res = fptr_lpGetIntKeyFloatVal(key, defValue);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "float", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetStrKeyFloatVal(QString __id, QString key, float defValue) {
+    if (fptr_lpGetStrKeyFloatVal == NULL) {
+        logger.error("Bad function pointer: lpGetStrKeyFloatVal");
+        throw bad_fptr("lpGetStrKeyFloatVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetStrKeyFloatVal(", key.toStdString().c_str(), ", ", defValue, ")");
+        float res = fptr_lpGetStrKeyFloatVal(key.toStdString().c_str(), defValue);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "float", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetIntKeyStrVal(QString __id, int key, QString defValue) {
+    if (fptr_lpGetIntKeyStrVal == NULL) {
+        logger.error("Bad function pointer: lpGetIntKeyStrVal");
+        throw bad_fptr("lpGetIntKeyStrVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetIntKeyStrVal(", key, ", ", defValue.toStdString().c_str(), ")");
+        const char* res = fptr_lpGetIntKeyStrVal(key, defValue.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::lpGetStrKeyStrVal(QString __id, QString key, QString defValue) {
+    if (fptr_lpGetStrKeyStrVal == NULL) {
+        logger.error("Bad function pointer: lpGetStrKeyStrVal");
+        throw bad_fptr("lpGetStrKeyStrVal");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call lpGetStrKeyStrVal(", key.toStdString().c_str(), ", ", defValue.toStdString().c_str(), ")");
+        const char* res = fptr_lpGetStrKeyStrVal(key.toStdString().c_str(), defValue.toStdString().c_str());
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::processUnitsNoChecksum(QString __id) {
+    if (fptr_ProcessUnitsNoChecksum == NULL) {
+        logger.error("Bad function pointer: ProcessUnitsNoChecksum");
+        throw bad_fptr("ProcessUnitsNoChecksum");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call ProcessUnitsNoChecksum(", ")");
+        int res = fptr_ProcessUnitsNoChecksum();
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getInfoValue(QString __id, int index) {
+    if (fptr_GetInfoValue == NULL) {
+        logger.error("Bad function pointer: GetInfoValue");
+        throw bad_fptr("GetInfoValue");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetInfoValue(", index, ")");
+        const char* res = fptr_GetInfoValue(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getPrimaryModName(QString __id, int index) {
+    if (fptr_GetPrimaryModName == NULL) {
+        logger.error("Bad function pointer: GetPrimaryModName");
+        throw bad_fptr("GetPrimaryModName");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetPrimaryModName(", index, ")");
+        const char* res = fptr_GetPrimaryModName(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getPrimaryModShortName(QString __id, int index) {
+    if (fptr_GetPrimaryModShortName == NULL) {
+        logger.error("Bad function pointer: GetPrimaryModShortName");
+        throw bad_fptr("GetPrimaryModShortName");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetPrimaryModShortName(", index, ")");
+        const char* res = fptr_GetPrimaryModShortName(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getPrimaryModVersion(QString __id, int index) {
+    if (fptr_GetPrimaryModVersion == NULL) {
+        logger.error("Bad function pointer: GetPrimaryModVersion");
+        throw bad_fptr("GetPrimaryModVersion");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetPrimaryModVersion(", index, ")");
+        const char* res = fptr_GetPrimaryModVersion(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getPrimaryModMutator(QString __id, int index) {
+    if (fptr_GetPrimaryModMutator == NULL) {
+        logger.error("Bad function pointer: GetPrimaryModMutator");
+        throw bad_fptr("GetPrimaryModMutator");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetPrimaryModMutator(", index, ")");
+        const char* res = fptr_GetPrimaryModMutator(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getPrimaryModGame(QString __id, int index) {
+    if (fptr_GetPrimaryModGame == NULL) {
+        logger.error("Bad function pointer: GetPrimaryModGame");
+        throw bad_fptr("GetPrimaryModGame");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetPrimaryModGame(", index, ")");
+        const char* res = fptr_GetPrimaryModGame(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getPrimaryModShortGame(QString __id, int index) {
+    if (fptr_GetPrimaryModShortGame == NULL) {
+        logger.error("Bad function pointer: GetPrimaryModShortGame");
+        throw bad_fptr("GetPrimaryModShortGame");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetPrimaryModShortGame(", index, ")");
+        const char* res = fptr_GetPrimaryModShortGame(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::getPrimaryModDescription(QString __id, int index) {
+    if (fptr_GetPrimaryModDescription == NULL) {
+        logger.error("Bad function pointer: GetPrimaryModDescription");
+        throw bad_fptr("GetPrimaryModDescription");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call GetPrimaryModDescription(", index, ")");
+        const char* res = fptr_GetPrimaryModDescription(index);
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+    });
+    queueCond.notify_all();
+}
+void UnitsyncHandlerAsync::openArchiveType(QString __id, QString name, QString type) {
+    if (fptr_OpenArchiveType == NULL) {
+        logger.error("Bad function pointer: OpenArchiveType");
+        throw bad_fptr("OpenArchiveType");
+    }
+    boost::unique_lock<boost::mutex> lock(queueMutex);
+    queue.push([=](){
+        logger.debug("call OpenArchiveType(", name.toStdString().c_str(), ", ", type.toStdString().c_str(), ")");
+        int res = fptr_OpenArchiveType(name.toStdString().c_str(), type.toStdString().c_str());
         QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "int", std::to_string(res)));
     });
     queueCond.notify_all();

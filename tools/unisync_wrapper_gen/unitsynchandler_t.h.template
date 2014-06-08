@@ -1,0 +1,68 @@
+#ifndef _UNITSYNC_HANDLER_T_H
+#define _UNITSYNC_HANDLER_T_H
+
+#include "logger.h"
+#include <string>
+#include <exception>
+#include <queue>
+#include <boost/filesystem.hpp>
+#include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/condition_variable.hpp>
+#include <QObject>
+
+class MapInfo;
+class UnitsyncHandlerAsync : public QObject {
+    Q_OBJECT
+public:
+    UnitsyncHandlerAsync(QObject* parent, Logger&, boost::filesystem::path dllpath);
+    ~UnitsyncHandlerAsync();
+    bool startThread();
+
+    UnitsyncHandlerAsync(const UnitsyncHandlerAsync&) = delete;
+    UnitsyncHandlerAsync& operator=(const UnitsyncHandlerAsync&) = delete;
+    UnitsyncHandlerAsync(UnitsyncHandlerAsync&&);
+
+    // Event used when unitsync wants to send a function result to js.
+    struct ResultEvent : QEvent {
+        ResultEvent(const std::string& id, const std::string& type, const std::string& res) : QEvent(QEvent::Type(TypeId)),
+            id(id), type(type), res(res) {}
+        std::string id, type, res;
+        static const int TypeId = QEvent::User + 5; // maybe magic numbers aren't the answer...
+    };
+
+    struct bad_fptr : public std::exception {
+        bad_fptr(std::string symbol) {
+            m_what = "Symbol " + symbol + " not found in the unitsync library.";
+        }
+        const char* what() const noexcept { return m_what.c_str(); }
+        std::string m_what;
+    };
+
+public slots:
+
+    void jsReadFileVFS(QString, int fd, int size);
+
+    // Unitsync functions.
+
+    ${header_public_methods_async}
+
+private:
+    Logger& logger;
+    bool ready;
+    void* handle;
+
+    boost::thread workThread;
+    std::queue<std::function<void()>> queue;
+    // This mutex blocks queue execution across all instances
+    // of UnitsyncHandlerAsync.
+    static boost::mutex executionMutex;
+    boost::mutex queueMutex; // queue and ready access
+    boost::condition_variable queueCond;
+
+    // Unisync function pointers.
+
+    ${header_properties}
+};
+
+#endif // _UNITSYNC_HANDLER_T_H

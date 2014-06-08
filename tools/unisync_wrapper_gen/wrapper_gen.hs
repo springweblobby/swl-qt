@@ -20,6 +20,12 @@ marshallOut :: CType -> ByteString -> ByteString
 marshallOut QString name = "QString(" <> name <> ")"
 marshallOut _ name = name
 
+marshallAsString :: CType -> ByteString -> ByteString
+marshallAsString CBool name = "(" <> name <> " ? \"true\" : \"false\")"
+marshallAsString CString name = name
+marshallAsString CVoid name = "\"\""
+marshallAsString _ name = "std::to_string(" <> name <> ")"
+
 getExternalRep :: CType -> CType
 getExternalRep CString = QString
 -- Unitsync returns checksums as unsigned integers but the server actually
@@ -28,6 +34,38 @@ getExternalRep CUint = CInt
 getExternalRep t = t
 
 putTemplate :: [CFunc] -> ByteString -> [ByteString]
+
+-- Async unitsync stuff.
+
+-- Declarations of public methods for UnitsyncHandlerAsync.
+putTemplate funcs "header_public_methods_async" = flip map (onlyKnown funcs) $ \(CFunc ret name args) ->
+    "void " <> toLowerCase name <> "(" <> commaList ("QString" : map (\(Arg _ t) ->
+        showCType (getExternalRep t)) args) <> ");"
+
+-- Definitions of the public methods (async).
+putTemplate funcs "public_methods_definitions_async" = concat $ flip map (onlyKnown funcs) $ \(CFunc ret name args) ->
+ let callArgs = flip map args $ \(Arg n t) -> marshallIn (getExternalRep t) n
+  in ["void UnitsyncHandlerAsync::" <> toLowerCase name <> "(" <>
+        commaList ("QString __id" : map (\(Arg n t) -> showCType (getExternalRep t) <> " " <> n) args) <> ") {",
+     "    if (fptr_" <> name <> " == NULL) {",
+     "        logger.error(\"Bad function pointer: " <> name <> "\");",
+     "        throw bad_fptr(\"" <> name <> "\");",
+     "    }",
+     "    boost::unique_lock<boost::mutex> lock(queueMutex);",
+     "    queue.push([=](){",
+     "        logger.debug(\"call " <> name <> "(\", " <> commaList (intersperse "\", \"" callArgs) <>
+                (if null callArgs then "" else ", ") <> "\")\");",
+     "        " <> case ret of
+                    (CVoid) -> ""
+                    typ -> showCType typ <> " res = "
+                <> "fptr_" <> name <> "(" <> commaList callArgs <> ")" <> ";",
+     "        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), \"" <> showCType ret <> "\", " <>
+                marshallAsString ret "res" <> "));",
+     "    });",
+     "    queueCond.notify_all();",
+     "}"]
+
+
 
 -- This goes into the move ctor of UnitsyncHandler.
 putTemplate funcs "move_ctor_assignment" = map (\(CFunc _ name _) ->
