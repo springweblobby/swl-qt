@@ -95,6 +95,15 @@ UnitsyncHandlerAsync::UnitsyncHandlerAsync(UnitsyncHandlerAsync&& h) : QObject(h
     ${move_ctor_assignment}
 }
 
+std::string UnitsyncHandlerAsync::cstrNull(const char* str) {
+    if (str == NULL){
+        logger.warning("unitsync: trying to convert NULL to std::string");
+        return "";
+    } else {
+        return str;
+    }
+}
+
 // Returns a %-escaped string ready for use in a data URL.
 void UnitsyncHandlerAsync::jsReadFileVFS(QString __id, int fd, int size) {
     boost::unique_lock<boost::mutex> lock(queueMutex);

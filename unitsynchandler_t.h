@@ -214,6 +214,8 @@ private:
     boost::mutex queueMutex; // queue and ready access
     boost::condition_variable queueCond;
 
+    std::string cstrNull(const char*);
+
     // Unisync function pointers.
 
     typedef const char* (*fptr_type_GetNextError)();

@@ -22,7 +22,7 @@ marshallOut _ name = name
 
 marshallAsString :: CType -> ByteString -> ByteString
 marshallAsString CBool name = "(" <> name <> " ? \"true\" : \"false\")"
-marshallAsString CString name = name
+marshallAsString CString name = "cstrNull(" <> name <> ")"
 marshallAsString CVoid name = "\"\""
 marshallAsString _ name = "std::to_string(" <> name <> ")"
 

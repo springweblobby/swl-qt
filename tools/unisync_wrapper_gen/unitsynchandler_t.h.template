@@ -60,6 +60,8 @@ private:
     boost::mutex queueMutex; // queue and ready access
     boost::condition_variable queueCond;
 
+    std::string cstrNull(const char*);
+
     // Unisync function pointers.
 
     ${header_properties}

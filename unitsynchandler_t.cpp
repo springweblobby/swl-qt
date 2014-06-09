@@ -24,7 +24,7 @@ bool UnitsyncHandlerAsync::startThread() {
             while (ready) {{
                     boost::unique_lock<boost::mutex> lock(queueMutex);
                     queueCond.wait(lock, [=](){ return !(ready && queue.empty()); });
-                    if (!ready) break;
+		    if (!ready) break;
                     func = queue.front();
                     queue.pop();
                 }{
@@ -584,6 +584,15 @@ UnitsyncHandlerAsync::UnitsyncHandlerAsync(UnitsyncHandlerAsync&& h) : QObject(h
     fptr_OpenArchiveType = h.fptr_OpenArchiveType;
 }
 
+std::string UnitsyncHandlerAsync::cstrNull(const char* str) {
+    if (str == NULL){
+        logger.warning("unitsync: trying to convert NULL to std::string");
+        return "";
+    } else {
+        return str;
+    }
+}
+
 // Returns a %-escaped string ready for use in a data URL.
 void UnitsyncHandlerAsync::jsReadFileVFS(QString __id, int fd, int size) {
     boost::unique_lock<boost::mutex> lock(queueMutex);
@@ -610,7 +619,7 @@ void UnitsyncHandlerAsync::jsReadFileVFS(QString __id, int fd, int size) {
             std::snprintf(tmp, 8, "%%%.2hhX", readBuf[i + off]);
             res += tmp;
         }
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "string", res));
     });
     queueCond.notify_all();
 }
@@ -625,7 +634,7 @@ void UnitsyncHandlerAsync::getNextError(QString __id) {
     queue.push([=](){
         logger.debug("call GetNextError(", ")");
         const char* res = fptr_GetNextError();
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -638,7 +647,7 @@ void UnitsyncHandlerAsync::getSpringVersion(QString __id) {
     queue.push([=](){
         logger.debug("call GetSpringVersion(", ")");
         const char* res = fptr_GetSpringVersion();
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -651,7 +660,7 @@ void UnitsyncHandlerAsync::getSpringVersionPatchset(QString __id) {
     queue.push([=](){
         logger.debug("call GetSpringVersionPatchset(", ")");
         const char* res = fptr_GetSpringVersionPatchset();
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -703,7 +712,7 @@ void UnitsyncHandlerAsync::getWritableDataDirectory(QString __id) {
     queue.push([=](){
         logger.debug("call GetWritableDataDirectory(", ")");
         const char* res = fptr_GetWritableDataDirectory();
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -729,7 +738,7 @@ void UnitsyncHandlerAsync::getDataDirectory(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetDataDirectory(", index, ")");
         const char* res = fptr_GetDataDirectory(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -768,7 +777,7 @@ void UnitsyncHandlerAsync::getUnitName(QString __id, int unit) {
     queue.push([=](){
         logger.debug("call GetUnitName(", unit, ")");
         const char* res = fptr_GetUnitName(unit);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -781,7 +790,7 @@ void UnitsyncHandlerAsync::getFullUnitName(QString __id, int unit) {
     queue.push([=](){
         logger.debug("call GetFullUnitName(", unit, ")");
         const char* res = fptr_GetFullUnitName(unit);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -846,7 +855,7 @@ void UnitsyncHandlerAsync::getArchivePath(QString __id, QString archiveName) {
     queue.push([=](){
         logger.debug("call GetArchivePath(", archiveName.toStdString().c_str(), ")");
         const char* res = fptr_GetArchivePath(archiveName.toStdString().c_str());
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -872,7 +881,7 @@ void UnitsyncHandlerAsync::getMapName(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetMapName(", index, ")");
         const char* res = fptr_GetMapName(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -885,7 +894,7 @@ void UnitsyncHandlerAsync::getMapFileName(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetMapFileName(", index, ")");
         const char* res = fptr_GetMapFileName(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -898,7 +907,7 @@ void UnitsyncHandlerAsync::getMapDescription(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetMapDescription(", index, ")");
         const char* res = fptr_GetMapDescription(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -911,7 +920,7 @@ void UnitsyncHandlerAsync::getMapAuthor(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetMapAuthor(", index, ")");
         const char* res = fptr_GetMapAuthor(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1015,7 +1024,7 @@ void UnitsyncHandlerAsync::getMapResourceName(QString __id, int index, int resou
     queue.push([=](){
         logger.debug("call GetMapResourceName(", index, ", ", resourceIndex, ")");
         const char* res = fptr_GetMapResourceName(index, resourceIndex);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1132,7 +1141,7 @@ void UnitsyncHandlerAsync::getMapArchiveName(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetMapArchiveName(", index, ")");
         const char* res = fptr_GetMapArchiveName(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1197,7 +1206,7 @@ void UnitsyncHandlerAsync::getInfoKey(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetInfoKey(", index, ")");
         const char* res = fptr_GetInfoKey(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1210,7 +1219,7 @@ void UnitsyncHandlerAsync::getInfoType(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetInfoType(", index, ")");
         const char* res = fptr_GetInfoType(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1223,7 +1232,7 @@ void UnitsyncHandlerAsync::getInfoValueString(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetInfoValueString(", index, ")");
         const char* res = fptr_GetInfoValueString(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1275,7 +1284,7 @@ void UnitsyncHandlerAsync::getInfoDescription(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetInfoDescription(", index, ")");
         const char* res = fptr_GetInfoDescription(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1327,7 +1336,7 @@ void UnitsyncHandlerAsync::getPrimaryModArchive(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetPrimaryModArchive(", index, ")");
         const char* res = fptr_GetPrimaryModArchive(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1353,7 +1362,7 @@ void UnitsyncHandlerAsync::getPrimaryModArchiveList(QString __id, int archive) {
     queue.push([=](){
         logger.debug("call GetPrimaryModArchiveList(", archive, ")");
         const char* res = fptr_GetPrimaryModArchiveList(archive);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1418,7 +1427,7 @@ void UnitsyncHandlerAsync::getSideName(QString __id, int side) {
     queue.push([=](){
         logger.debug("call GetSideName(", side, ")");
         const char* res = fptr_GetSideName(side);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1431,7 +1440,7 @@ void UnitsyncHandlerAsync::getSideStartUnit(QString __id, int side) {
     queue.push([=](){
         logger.debug("call GetSideStartUnit(", side, ")");
         const char* res = fptr_GetSideStartUnit(side);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1483,7 +1492,7 @@ void UnitsyncHandlerAsync::getOptionKey(QString __id, int optIndex) {
     queue.push([=](){
         logger.debug("call GetOptionKey(", optIndex, ")");
         const char* res = fptr_GetOptionKey(optIndex);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1496,7 +1505,7 @@ void UnitsyncHandlerAsync::getOptionScope(QString __id, int optIndex) {
     queue.push([=](){
         logger.debug("call GetOptionScope(", optIndex, ")");
         const char* res = fptr_GetOptionScope(optIndex);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1509,7 +1518,7 @@ void UnitsyncHandlerAsync::getOptionName(QString __id, int optIndex) {
     queue.push([=](){
         logger.debug("call GetOptionName(", optIndex, ")");
         const char* res = fptr_GetOptionName(optIndex);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1522,7 +1531,7 @@ void UnitsyncHandlerAsync::getOptionSection(QString __id, int optIndex) {
     queue.push([=](){
         logger.debug("call GetOptionSection(", optIndex, ")");
         const char* res = fptr_GetOptionSection(optIndex);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1535,7 +1544,7 @@ void UnitsyncHandlerAsync::getOptionStyle(QString __id, int optIndex) {
     queue.push([=](){
         logger.debug("call GetOptionStyle(", optIndex, ")");
         const char* res = fptr_GetOptionStyle(optIndex);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1548,7 +1557,7 @@ void UnitsyncHandlerAsync::getOptionDesc(QString __id, int optIndex) {
     queue.push([=](){
         logger.debug("call GetOptionDesc(", optIndex, ")");
         const char* res = fptr_GetOptionDesc(optIndex);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1639,7 +1648,7 @@ void UnitsyncHandlerAsync::getOptionStringDef(QString __id, int optIndex) {
     queue.push([=](){
         logger.debug("call GetOptionStringDef(", optIndex, ")");
         const char* res = fptr_GetOptionStringDef(optIndex);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1678,7 +1687,7 @@ void UnitsyncHandlerAsync::getOptionListDef(QString __id, int optIndex) {
     queue.push([=](){
         logger.debug("call GetOptionListDef(", optIndex, ")");
         const char* res = fptr_GetOptionListDef(optIndex);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1691,7 +1700,7 @@ void UnitsyncHandlerAsync::getOptionListItemKey(QString __id, int optIndex, int 
     queue.push([=](){
         logger.debug("call GetOptionListItemKey(", optIndex, ", ", itemIndex, ")");
         const char* res = fptr_GetOptionListItemKey(optIndex, itemIndex);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1704,7 +1713,7 @@ void UnitsyncHandlerAsync::getOptionListItemName(QString __id, int optIndex, int
     queue.push([=](){
         logger.debug("call GetOptionListItemName(", optIndex, ", ", itemIndex, ")");
         const char* res = fptr_GetOptionListItemName(optIndex, itemIndex);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1717,7 +1726,7 @@ void UnitsyncHandlerAsync::getOptionListItemDesc(QString __id, int optIndex, int
     queue.push([=](){
         logger.debug("call GetOptionListItemDesc(", optIndex, ", ", itemIndex, ")");
         const char* res = fptr_GetOptionListItemDesc(optIndex, itemIndex);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1743,7 +1752,7 @@ void UnitsyncHandlerAsync::getModValidMap(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetModValidMap(", index, ")");
         const char* res = fptr_GetModValidMap(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1912,7 +1921,7 @@ void UnitsyncHandlerAsync::getSpringConfigFile(QString __id) {
     queue.push([=](){
         logger.debug("call GetSpringConfigFile(", ")");
         const char* res = fptr_GetSpringConfigFile();
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -1925,7 +1934,7 @@ void UnitsyncHandlerAsync::getSpringConfigString(QString __id, QString name, QSt
     queue.push([=](){
         logger.debug("call GetSpringConfigString(", name.toStdString().c_str(), ", ", defValue.toStdString().c_str(), ")");
         const char* res = fptr_GetSpringConfigString(name.toStdString().c_str(), defValue.toStdString().c_str());
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -2068,7 +2077,7 @@ void UnitsyncHandlerAsync::lpErrorLog(QString __id) {
     queue.push([=](){
         logger.debug("call lpErrorLog(", ")");
         const char* res = fptr_lpErrorLog();
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -2393,7 +2402,7 @@ void UnitsyncHandlerAsync::lpGetStrKeyListEntry(QString __id, int index) {
     queue.push([=](){
         logger.debug("call lpGetStrKeyListEntry(", index, ")");
         const char* res = fptr_lpGetStrKeyListEntry(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -2484,7 +2493,7 @@ void UnitsyncHandlerAsync::lpGetIntKeyStrVal(QString __id, int key, QString defV
     queue.push([=](){
         logger.debug("call lpGetIntKeyStrVal(", key, ", ", defValue.toStdString().c_str(), ")");
         const char* res = fptr_lpGetIntKeyStrVal(key, defValue.toStdString().c_str());
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -2497,7 +2506,7 @@ void UnitsyncHandlerAsync::lpGetStrKeyStrVal(QString __id, QString key, QString 
     queue.push([=](){
         logger.debug("call lpGetStrKeyStrVal(", key.toStdString().c_str(), ", ", defValue.toStdString().c_str(), ")");
         const char* res = fptr_lpGetStrKeyStrVal(key.toStdString().c_str(), defValue.toStdString().c_str());
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -2523,7 +2532,7 @@ void UnitsyncHandlerAsync::getInfoValue(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetInfoValue(", index, ")");
         const char* res = fptr_GetInfoValue(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -2536,7 +2545,7 @@ void UnitsyncHandlerAsync::getPrimaryModName(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetPrimaryModName(", index, ")");
         const char* res = fptr_GetPrimaryModName(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -2549,7 +2558,7 @@ void UnitsyncHandlerAsync::getPrimaryModShortName(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetPrimaryModShortName(", index, ")");
         const char* res = fptr_GetPrimaryModShortName(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -2562,7 +2571,7 @@ void UnitsyncHandlerAsync::getPrimaryModVersion(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetPrimaryModVersion(", index, ")");
         const char* res = fptr_GetPrimaryModVersion(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -2575,7 +2584,7 @@ void UnitsyncHandlerAsync::getPrimaryModMutator(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetPrimaryModMutator(", index, ")");
         const char* res = fptr_GetPrimaryModMutator(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -2588,7 +2597,7 @@ void UnitsyncHandlerAsync::getPrimaryModGame(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetPrimaryModGame(", index, ")");
         const char* res = fptr_GetPrimaryModGame(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -2601,7 +2610,7 @@ void UnitsyncHandlerAsync::getPrimaryModShortGame(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetPrimaryModShortGame(", index, ")");
         const char* res = fptr_GetPrimaryModShortGame(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
@@ -2614,7 +2623,7 @@ void UnitsyncHandlerAsync::getPrimaryModDescription(QString __id, int index) {
     queue.push([=](){
         logger.debug("call GetPrimaryModDescription(", index, ")");
         const char* res = fptr_GetPrimaryModDescription(index);
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", cstrNull(res)));
     });
     queueCond.notify_all();
 }
