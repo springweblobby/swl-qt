@@ -24,7 +24,7 @@ bool UnitsyncHandlerAsync::startThread() {
             while (ready) {{
                     boost::unique_lock<boost::mutex> lock(queueMutex);
                     queueCond.wait(lock, [=](){ return !(ready && queue.empty()); });
-		    if (!ready) break;
+                    if (!ready) break;
                     func = queue.front();
                     queue.pop();
                 }{
@@ -130,7 +130,7 @@ void UnitsyncHandlerAsync::jsReadFileVFS(QString __id, int fd, int size) {
             std::snprintf(tmp, 8, "%%%.2hhX", readBuf[i + off]);
             res += tmp;
         }
-        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "string", res));
+        QCoreApplication::postEvent(parent(), new ResultEvent(__id.toStdString(), "const char*", res));
     });
     queueCond.notify_all();
 }
