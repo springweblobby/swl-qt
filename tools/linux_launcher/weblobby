@@ -2,6 +2,11 @@
 # You should have a folder named lib next to this script that contains the
 # actual executable and all the libs and qt and gst plugins.
 # Don't forget to chmod ug+x weblobby.desktop
+
+# Take care of steam's crazy LD_PRELOAD.
+OLD_LD_PRELOAD=$LD_PRELOAD
+export LD_PRELOAD=
+
 cd "`dirname $0`"
 if [ ! -d lib ]; then
     echo "The lib folder is not found. Nothing to launch."
@@ -20,11 +25,11 @@ if [ ! -d unused ]; then
     mkdir unused
     # It used to test all executables, but Steam makes every file executable,
     # including 1.4 gigs in evo_data...
-    # So now the executable list should be revieved manually.
+    # So now the executable list should be reviewed manually.
     for i in $(for i in *.so* weblobby gstreamer_play gst/* imageformats/* platforms/*; do LD_LIBRARY_PATH= ldd $i; done |
             sed -e '/not /d;/libQt5/d;/libgst/d;/libicu/d;/libboost/d;s/^[[:space:]]*\([^ ]*\).*$/\1/'); do
         mv `basename $i` unused/ &> /dev/null
     done
     echo "Done."
 fi
-exec ./weblobby $@
+LD_PRELOAD=$OLD_LD_PRELOAD exec ./weblobby $@
