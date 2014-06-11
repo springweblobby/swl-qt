@@ -16,6 +16,7 @@
 #include <deque>
 #include <algorithm>
 #if defined Q_OS_LINUX || defined Q_OS_MAC
+    #include <unistd.h>
     #include <sys/stat.h> // chmod()
 #endif
 namespace fs = boost::filesystem;
@@ -40,11 +41,18 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
     if (args.contains("-debug"))
         logger.setDebug(true);
 
-    #ifdef Q_OS_LINUX
+    #if defined Q_OS_LINUX
         char buf[1024];
-        readlink("/proc/self/exe", buf, 1024);
-        gstreamerPlayPath = dirname(buf);
-        gstreamerPlayPath += "/gstreamer_play";
+        if (readlink("/proc/self/exe", buf, 1024) >= 0) {
+            executablePath = fs::path(buf).parent_path();
+        } else {
+            getcwd(buf, 1024);
+            executablePath = fs::path(buf);
+        }
+    #elif defined Q_OS_WIN32
+        #error TODO: GetModuleFileName()
+    #elif defined Q_OS_MAC
+        #error TODO: _NSGetExecutablePath()
     #endif
 }
 
@@ -86,16 +94,8 @@ void LobbyInterface::init() {
         #error "Unknown target OS."
     #endif
 
-    if (springHome != "");
-    else if (os == "Windows") {
-        // This calls SHGetFolderPath(... CSIDL_PERSONAL ...), same as what Spring uses.
-        springHome = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation).toStdWString() +
-            L"/My Games/Spring";
-    } else {
-        // ~/.spring
-        springHome = QStandardPaths::writableLocation(QStandardPaths::HomeLocation).toStdWString() +
-            L"/.spring";
-    }
+    setSpringHomeSetting(getSpringHomeSetting());
+    springHome = springHomeSetting.is_absolute() ? springHomeSetting : executablePath / springHomeSetting;
     logger.info("springHome is ", springHome);
 
     try {
@@ -131,9 +131,34 @@ QString LobbyInterface::getSpringHome() {
     return QString::fromStdWString(springHome.wstring());
 }
 
-// Should be called prior to init() to take effect.
-void LobbyInterface::setSpringHome(QString path) {
+QString LobbyInterface::getSpringHomeSetting() {
+    try {
+        fs::wifstream in(executablePath / "swlrc");
+        in.exceptions(std::ios::failbit);
+        std::wstring str;
+        in >> str;
+        const std::wstring key = L"springHome:";
+        if (str.find(key) != 0 || (springHomeSetting = str.substr(key.length())).empty())
+            throw std::exception();
+    } catch(...) {
+        // Config file doesn't exist or can't be parsed, using the default path.
+        if (os == "Windows") {
+            // This calls SHGetFolderPath(... CSIDL_PERSONAL ...), same as what Spring uses.
+            springHomeSetting = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation).toStdWString() +
+                L"/My Games/Spring";
+        } else {
+            // ~/.spring
+            springHomeSetting = QStandardPaths::writableLocation(QStandardPaths::HomeLocation).toStdWString() +
+                L"/.spring";
+        }
+    }
+    return QString::fromStdWString(springHomeSetting.wstring());
+}
+
+void LobbyInterface::setSpringHomeSetting(QString path) {
     springHome = path.toStdWString();
+    fs::wofstream out(executablePath / "swlrc");
+    out << L"springHome:" << springHomeSetting.wstring() << std::endl;
 }
 
 void LobbyInterface::connect(QString host, unsigned int port) {
@@ -410,7 +435,8 @@ void LobbyInterface::playSound(QString url) {
         mediaPlayer.setMedia(QUrl(url));
         mediaPlayer.play();
     #elif defined Q_OS_LINUX
-        runCommand("gstreamer_play", {gstreamerPlayPath, url});
+        runCommand("gstreamer_play", { QString::fromStdWString((executablePath /
+            "gstreamer_play").wstring()) , url });
     #endif
 }
 

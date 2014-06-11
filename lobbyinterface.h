@@ -123,7 +123,8 @@ public slots:
     void playSound(QString url);
 
     QString getSpringHome();
-    void setSpringHome(QString path);
+    QString getSpringHomeSetting();
+    void setSpringHomeSetting(QString path);
     // The version number is major * 100 + minor.
     // major is incremented with every change in API.
     int getApiVersion() { return 1; }
@@ -135,13 +136,13 @@ private:
 
     std::string os;
     boost::filesystem::path springHome;
+    boost::filesystem::path springHomeSetting;
+    boost::filesystem::path executablePath;
     Logger logger;
     bool debugNetwork, debugCommands;
     NetworkHandler network;
     #if defined Q_OS_WIN32 || defined Q_OS_MAC
         QMediaPlayer mediaPlayer;
-    #elif defined Q_OS_LINUX
-        QString gstreamerPlayPath;
     #endif
 
     QWebFrame* frame;
