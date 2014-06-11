@@ -124,7 +124,9 @@ public slots:
 
     QString getSpringHome();
     void setSpringHome(QString path);
-    int getApiVersion() { return 1; } // TODO: hook to have revision in here?
+    // The version number is major * 100 + minor.
+    // major is incremented with every change in API.
+    int getApiVersion() { return 1; }
 private:
     QString listFilesPriv(QString path, bool dirs);
     void evalJs(const std::string&);
