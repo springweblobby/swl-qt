@@ -196,6 +196,10 @@ bool LobbyInterface::event(QEvent* evt) {
             processes.erase(processes.find(termEvt.cmd));
         }
         return true;
+    } else if (evt->type() == UnitsyncHandlerAsync::ResultEvent::TypeId) {
+        auto resEvt = dynamic_cast<UnitsyncHandlerAsync::ResultEvent&>(*evt);
+        evalJs("unitsyncResult('" + escapeJs(resEvt.id) + "', '" + escapeJs(resEvt.type) + "', '" + escapeJs(resEvt.res) + "')");
+        return true;
     } else {
         return QObject::event(evt);
     }
@@ -360,6 +364,21 @@ QObject* LobbyInterface::getUnitsync(QString qpath) {
     else {
         logger.warning("Unitsync not loaded at ", path);
         unitsyncs.erase(unitsyncs.find(path));
+        return NULL;
+    }
+}
+
+QObject* LobbyInterface::getUnitsyncAsync(QString qpath) {
+    fs::path path = qpath.toStdWString();
+    if (!unitsyncs_async.count(path)) {
+        unitsyncs_async.insert(std::make_pair(path, UnitsyncHandlerAsync(this, logger, path)));
+    }
+
+    if (unitsyncs_async.find(path)->second.startThread())
+        return &(unitsyncs_async.find(path)->second);
+    else {
+        logger.warning("Unitsync not loaded at ", path);
+        unitsyncs_async.erase(unitsyncs_async.find(path));
         return NULL;
     }
 }
