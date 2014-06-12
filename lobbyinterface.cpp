@@ -141,7 +141,7 @@ QString LobbyInterface::getSpringHomeSetting() {
         fs::ifstream in(executablePath / "swlrc");
         in.exceptions(std::ios::failbit);
         std::string str;
-        in >> str;
+        std::getline(in, str);
         const std::string key = "springHome:";
         if (str.find(key) != 0 || (springHomeSetting = toStdWString((str.substr(key.length())))).empty())
             throw std::exception();
