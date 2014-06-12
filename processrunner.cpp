@@ -142,10 +142,9 @@ void ProcessRunner::run() {
             wenv.push_back(std::wstring(i.begin(), i.end()));
     #endif
     #ifdef BOOST_POSIX_API
-        // FIXME: Ideally, args should be converted into proper utf-8.
         std::vector<std::string> sargs;
         for(auto i : args)
-            sargs.push_back(std::string(i.begin(), i.end()));
+            sargs.push_back(QString::fromStdWString(i).toStdString());
     #endif
 
     try {
