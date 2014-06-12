@@ -133,11 +133,11 @@ QString LobbyInterface::getSpringHome() {
 
 QString LobbyInterface::getSpringHomeSetting() {
     try {
-        fs::wifstream in(executablePath / "swlrc");
+        fs::ifstream in(executablePath / "swlrc");
         in.exceptions(std::ios::failbit);
-        std::wstring str;
+        std::string str;
         in >> str;
-        const std::wstring key = L"springHome:";
+        const std::string key = "springHome:";
         if (str.find(key) != 0 || (springHomeSetting = str.substr(key.length())).empty())
             throw std::exception();
     } catch(...) {
@@ -157,8 +157,8 @@ QString LobbyInterface::getSpringHomeSetting() {
 
 void LobbyInterface::setSpringHomeSetting(QString path) {
     springHome = path.toStdWString();
-    fs::wofstream out(executablePath / "swlrc");
-    out << L"springHome:" << springHomeSetting.wstring() << std::endl;
+    fs::ofstream out(executablePath / "swlrc");
+    out << "springHome:" << springHomeSetting.string() << std::endl;
 }
 
 void LobbyInterface::connect(QString host, unsigned int port) {
