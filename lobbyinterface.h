@@ -153,4 +153,13 @@ private:
     std::map<std::string, ProcessRunner> processes;
 };
 
+// utf-8 string to utf-16 (on windows).
+inline std::wstring toStdWString(const std::string& str) {
+    return QString::fromStdString(str).toStdWString();
+}
+// the opposite
+inline std::string toStdString(const std::wstring& str) {
+    return QString::fromStdWString(str).toStdString();
+}
+
 #endif // LOBBYINTERFACE_H

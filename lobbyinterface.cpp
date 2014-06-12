@@ -19,6 +19,9 @@
     #include <unistd.h>
     #include <sys/stat.h> // chmod()
 #endif
+#ifdef Q_OS_WIN32
+    #include <windows.h>
+#endif
 namespace fs = boost::filesystem;
 
 LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
@@ -50,7 +53,9 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
             executablePath = fs::path(buf);
         }
     #elif defined Q_OS_WIN32
-        #error TODO: GetModuleFileName()
+        wchar_t buf[1024];
+        GetModuleFileName(NULL, buf, 1024);
+        executablePath = fs::path(buf).parent_path();
     #elif defined Q_OS_MAC
         #error TODO: _NSGetExecutablePath()
     #endif
@@ -138,7 +143,7 @@ QString LobbyInterface::getSpringHomeSetting() {
         std::string str;
         in >> str;
         const std::string key = "springHome:";
-        if (str.find(key) != 0 || (springHomeSetting = str.substr(key.length())).empty())
+        if (str.find(key) != 0 || (springHomeSetting = toStdWString((str.substr(key.length())))).empty())
             throw std::exception();
     } catch(...) {
         // Config file doesn't exist or can't be parsed, using the default path.
@@ -158,7 +163,7 @@ QString LobbyInterface::getSpringHomeSetting() {
 void LobbyInterface::setSpringHomeSetting(QString path) {
     springHome = path.toStdWString();
     fs::ofstream out(executablePath / "swlrc");
-    out << "springHome:" << springHomeSetting.string() << std::endl;
+    out << "springHome:" << toStdString(springHomeSetting.wstring()) << std::endl;
 }
 
 void LobbyInterface::connect(QString host, unsigned int port) {

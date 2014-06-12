@@ -144,7 +144,7 @@ void ProcessRunner::run() {
     #ifdef BOOST_POSIX_API
         std::vector<std::string> sargs;
         for(auto i : args)
-            sargs.push_back(QString::fromStdWString(i).toStdString());
+            sargs.push_back(toStdString(i));
     #endif
 
     try {
