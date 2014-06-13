@@ -129,7 +129,8 @@ public slots:
     void writeSpringHomeSetting(QString path);
     // The version number is major * 100 + minor.
     // major is incremented with every change in API.
-    int getApiVersion() { return 1; }
+    // js code working with version X.Y must work with X.0 too.
+    int getApiVersion() { return 100; }
 private:
     QString listFilesPriv(QString path, bool dirs);
     void evalJs(const std::string&);
