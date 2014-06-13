@@ -125,8 +125,8 @@ public slots:
     void playSound(QString url);
 
     QString getSpringHome();
-    QString getSpringHomeSetting();
-    void setSpringHomeSetting(QString path);
+    QString readSpringHomeSetting();
+    void writeSpringHomeSetting(QString path);
     // The version number is major * 100 + minor.
     // major is incremented with every change in API.
     int getApiVersion() { return 1; }

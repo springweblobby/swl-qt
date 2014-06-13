@@ -99,8 +99,22 @@ void LobbyInterface::init() {
         #error "Unknown target OS."
     #endif
 
-    setSpringHomeSetting(getSpringHomeSetting());
-    springHome = springHomeSetting.is_absolute() ? springHomeSetting : executablePath / springHomeSetting;
+    writeSpringHomeSetting(readSpringHomeSetting());
+    if (springHomeSetting.empty()) {
+        if (os == "Windows") {
+            // This calls SHGetFolderPath(... CSIDL_PERSONAL ...), same as what Spring uses.
+            springHome = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation).toStdWString() +
+                L"/My Games/Spring";
+        } else {
+            // ~/.spring
+            springHome = QStandardPaths::writableLocation(QStandardPaths::HomeLocation).toStdWString() +
+                L"/.spring";
+        }
+    } else if (springHomeSetting.is_absolute()) {
+        springHome = springHomeSetting;
+    } else {
+        springHome = executablePath / springHomeSetting;
+    }
     logger.info("springHome is ", springHome);
 
     try {
@@ -136,32 +150,25 @@ QString LobbyInterface::getSpringHome() {
     return QString::fromStdWString(springHome.wstring());
 }
 
-QString LobbyInterface::getSpringHomeSetting() {
+QString LobbyInterface::readSpringHomeSetting() {
     try {
         fs::ifstream in(executablePath / "swlrc");
         in.exceptions(std::ios::failbit);
         std::string str;
         std::getline(in, str);
         const std::string key = "springHome:";
-        if (str.find(key) != 0 || (springHomeSetting = toStdWString((str.substr(key.length())))).empty())
-            throw std::exception();
+        if (str.find(key) != 0)
+            springHomeSetting = "";
+        else
+            springHomeSetting = toStdWString((str.substr(key.length())));
     } catch(...) {
-        // Config file doesn't exist or can't be parsed, using the default path.
-        if (os == "Windows") {
-            // This calls SHGetFolderPath(... CSIDL_PERSONAL ...), same as what Spring uses.
-            springHomeSetting = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation).toStdWString() +
-                L"/My Games/Spring";
-        } else {
-            // ~/.spring
-            springHomeSetting = QStandardPaths::writableLocation(QStandardPaths::HomeLocation).toStdWString() +
-                L"/.spring";
-        }
+        springHomeSetting = "";
     }
     return QString::fromStdWString(springHomeSetting.wstring());
 }
 
-void LobbyInterface::setSpringHomeSetting(QString path) {
-    springHome = path.toStdWString();
+void LobbyInterface::writeSpringHomeSetting(QString path) {
+    springHomeSetting = path.toStdWString();
     fs::ofstream out(executablePath / "swlrc");
     out << "springHome:" << toStdString(springHomeSetting.wstring()) << std::endl;
 }
