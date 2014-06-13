@@ -15,6 +15,7 @@
 #include <boost/thread/locks.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include "u_fstream.h"
 
 class Logger {
 public:
@@ -102,7 +103,7 @@ private:
 
     boost::mutex m_mutex;
     QObject* eventReceiver;
-    boost::filesystem::ofstream fileStream;
+    u_ofstream fileStream;
     bool debugEnabled;
 };
 
