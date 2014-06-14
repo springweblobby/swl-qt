@@ -64,8 +64,8 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
 static void copyFile(const fs::path& from, const fs::path& to) {
     // Can't use due to a linking error, see http://tinyurl.com/p2tuaft
     //fs::copy_file(from, to);
-    u_ifstream src(from, std::ios::binary);
-    u_ofstream dst(to, std::ios::binary);
+	std::istream src(get_ifilebuf(from, std::ios::in | std::ios::binary));
+	std::ostream dst(get_ofilebuf(to, std::ios::out | std::ios::binary));
     dst << src.rdbuf();
 }
 void LobbyInterface::move(const fs::path& src, const fs::path& dst) {
@@ -150,9 +150,10 @@ QString LobbyInterface::getSpringHome() {
     return QString::fromStdWString(springHome.wstring());
 }
 
+#include <iostream>
 QString LobbyInterface::readSpringHomeSetting() {
     try {
-        u_ifstream in(executablePath / "swlrc");
+		std::istream in(get_ifilebuf(executablePath / "swlrc"));
         in.exceptions(std::ios::failbit);
         std::string str;
         std::getline(in, str);
@@ -169,7 +170,7 @@ QString LobbyInterface::readSpringHomeSetting() {
 
 void LobbyInterface::writeSpringHomeSetting(QString path) {
     springHomeSetting = path.toStdWString();
-    u_ofstream out(executablePath / "swlrc");
+	std::ostream out(get_ofilebuf(executablePath / "swlrc"));
     out << "springHome:" << toStdString(springHomeSetting.wstring()) << std::endl;
 }
 
@@ -270,7 +271,7 @@ QString LobbyInterface::listFilesPriv(QString qpath, bool dirs) {
 QString LobbyInterface::readFileLess(QString qpath, unsigned int lines) {
     // TODO: deque? Just read the file in the reverse order, geez.
     fs::path path = qpath.toStdWString();
-    u_ifstream in(path);
+	std::istream in(get_ifilebuf(path));
     if (!in) {
         logger.warning("readFileLess(): Could not open ", path);
         return "";
@@ -304,7 +305,7 @@ int curl_debug(CURL* hnld, curl_infotype type, char* str, size_t size, void* plo
     return 0;
 }
 size_t static write_data(void* buf, size_t size, size_t mult, void* file) {
-    ((u_ofstream*)file)->write((const char*)buf, size * mult);
+    ((std::ostream*)file)->write((const char*)buf, size * mult);
     return size * mult;
 }
 bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
@@ -330,8 +331,8 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
 
     auto tempFile = fs::temp_directory_path();
     tempFile /= "weblobby_dl";
-    u_ofstream fo(tempFile, std::ios::binary);
-    if (!fo.is_open() || !fo.good()) {
+	std::ostream fo(get_ofilebuf(tempFile, std::ios::out | std::ios::binary));
+    if (fo.fail()) {
         logger.error("downloadFile(): can't open file: ", tempFile);
         return false;
     }
@@ -352,7 +353,7 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
         curl_slist_free_all(hlist);
     curl_easy_cleanup(handle);
     if (fo.tellp() > 0) {
-        fo.close();
+        fo.flush();
 		copyFile(tempFile, target);
         #if defined Q_OS_LINUX || defined Q_OS_MAC
             if (target.string().find("pr-downloader") != std::string::npos)
@@ -397,8 +398,8 @@ QObject* LobbyInterface::getUnitsyncAsync(QString qpath) {
 
 void LobbyInterface::createScript(QString qpath, QString script) {
     fs::path path = qpath.toStdWString();
-    u_ofstream out(path);
-    if (out.is_open() && out.good())
+	std::ostream out(get_ofilebuf(path));
+    if (out.good())
         out << script.toStdString();
     else
         logger.error("Could not create script at ", path);
@@ -436,7 +437,7 @@ void LobbyInterface::createUiKeys(QString qpath) {
     fs::path path = qpath.toStdWString();
     if (!fs::exists(path, ec)) {
         logger.info("Creating empty uikeys: ", path);
-        u_ofstream out(path);
+		std::ostream out(get_ofilebuf(path));
     }
 }
 
@@ -455,7 +456,10 @@ void LobbyInterface::deleteSpringSettings(QString qpath) {
 }
 
 void LobbyInterface::writeToFile(QString path, QString line) {
-    u_ofstream out(fs::path(path.toStdWString()), std::ios::app);
+	std::ostream out(get_ofilebuf(fs::path(path.toStdWString()), std::ios::app));
+	#ifdef __MINGW32__
+		out.seekp(0, std::ios::end);
+	#endif
     out << line.toStdString() << std::endl;
 }
 

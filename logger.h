@@ -15,13 +15,13 @@
 #include <boost/thread/locks.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
-#include "u_fstream.h"
+#include "get_filebuf.h"
 
 class Logger {
 public:
     typedef boost::lock_guard<boost::mutex> guard;
 
-    Logger() : eventReceiver(NULL), debugEnabled(false) {}
+    Logger() : eventReceiver(NULL), fileStream(NULL), debugEnabled(false) {}
 
     void setEventReceiver(QObject* obj) {
         guard lock(m_mutex);
@@ -29,7 +29,7 @@ public:
     }
     void setLogFile(const boost::filesystem::path& path) {
         guard lock(m_mutex);
-        fileStream.open(path, std::ios_base::app);
+        fileStream.rdbuf(get_ofilebuf(path, std::ios::app));
     }
     void setDebug(bool enable) {
         debugEnabled = enable;
@@ -76,17 +76,20 @@ private:
         else if (lev == level::error)
             tag = "[ERROR]";
         std::cout << std::left << std::setw(9) << tag << " ";
-        if (fileStream.is_open() && fileStream.good()) {
+        if (fileStream.good()) {
             time_t t = std::time(NULL);
             std::tm* tm = std::localtime(&t);
             char buf[128];
             std::strftime(buf, 128, "%Y-%m-%d %H:%M:%S", tm);
+            #ifdef __MINGW32__
+                fileStream.seekp(0, std::ios::end);
+            #endif
             fileStream << std::left << std::setw(9) << tag << " [" << buf << "] ";
         }
         put(msgString, args...);
 
         std::cout << std::endl;
-        if (fileStream.is_open() && fileStream.good())
+        if (fileStream.good())
             fileStream << std::endl;
         if (eventReceiver)
             QCoreApplication::postEvent(eventReceiver, new LogEvent(lev, msgString.str()));
@@ -96,14 +99,14 @@ private:
     void put(std::ostringstream& ss, T val, Args... args) {
         std::cout << val;
         ss << val;
-        if (fileStream.is_open() && fileStream.good())
+        if (fileStream.good())
             fileStream << val;
         put(ss, args...);
     }
 
     boost::mutex m_mutex;
     QObject* eventReceiver;
-    u_ofstream fileStream;
+    std::ostream fileStream;
     bool debugEnabled;
 };
 
