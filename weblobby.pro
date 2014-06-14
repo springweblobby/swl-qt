@@ -15,7 +15,7 @@ HEADERS += \
     weblobbywindow.h \
     lobbyinterface.h \
     logger.h \
-    get_filebuf.h\
+    ufstream.h\
     unitsynchandler.h\
     unitsynchandler_t.h
 

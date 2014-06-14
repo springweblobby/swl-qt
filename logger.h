@@ -15,7 +15,7 @@
 #include <boost/thread/locks.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
-#include "get_filebuf.h"
+#include "ufstream.h"
 
 class Logger {
 public:

@@ -2,7 +2,7 @@
 #define LOBBYINTERFACE_H
 
 #include "logger.h"
-#include "get_filebuf.h"
+#include "ufstream.h"
 #include "unitsynchandler.h"
 #include "unitsynchandler_t.h"
 #include <QObject>

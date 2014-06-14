@@ -1,5 +1,5 @@
-#ifndef GET_FILEBUF_H
-#define GET_FILEBUF_H
+#ifndef UFSTREAM_H
+#define UFSTREAM_H
 
 #include <stdio.h>
 #ifdef __MINGW32__
@@ -75,4 +75,4 @@ class uofstream : public std::basic_ostream<char, std::char_traits<char>> {
     }
 };
 
-#endif // GET_FILEBUF_H
+#endif // UFSTREAM_H
