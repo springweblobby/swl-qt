@@ -64,8 +64,8 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
 static void copyFile(const fs::path& from, const fs::path& to) {
     // Can't use due to a linking error, see http://tinyurl.com/p2tuaft
     //fs::copy_file(from, to);
-    uifstream src(from, std::ios::in | std::ios::binary);
-    uofstream dst(to, std::ios::out | std::ios::binary);
+    uifstream src(from, std::ios::binary);
+    uofstream dst(to, std::ios::binary);
     dst << src.rdbuf();
 }
 void LobbyInterface::move(const fs::path& src, const fs::path& dst) {
@@ -331,7 +331,7 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
 
     auto tempFile = fs::temp_directory_path();
     tempFile /= "weblobby_dl";
-    uofstream fo(tempFile, std::ios::out | std::ios::binary);
+    uofstream fo(tempFile, std::ios::binary);
     if (fo.fail()) {
         logger.error("downloadFile(): can't open file: ", tempFile);
         return false;
@@ -457,9 +457,6 @@ void LobbyInterface::deleteSpringSettings(QString qpath) {
 
 void LobbyInterface::writeToFile(QString path, QString line) {
     uofstream out(fs::path(path.toStdWString()), std::ios::app);
-    #ifdef __MINGW32__
-        out.seekp(0, std::ios::end);
-    #endif
     out << line.toStdString() << std::endl;
 }
 

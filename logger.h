@@ -21,7 +21,7 @@ class Logger {
 public:
     typedef boost::lock_guard<boost::mutex> guard;
 
-    Logger() : eventReceiver(NULL), fileStream(NULL), debugEnabled(false) {}
+    Logger() : eventReceiver(NULL), debugEnabled(false) {}
 
     void setEventReceiver(QObject* obj) {
         guard lock(m_mutex);
@@ -29,7 +29,7 @@ public:
     }
     void setLogFile(const boost::filesystem::path& path) {
         guard lock(m_mutex);
-        fileStream.rdbuf(get_ofilebuf(path, std::ios::app));
+        fileStream.open(path, std::ios::app);
     }
     void setDebug(bool enable) {
         debugEnabled = enable;
@@ -81,9 +81,6 @@ private:
             std::tm* tm = std::localtime(&t);
             char buf[128];
             std::strftime(buf, 128, "%Y-%m-%d %H:%M:%S", tm);
-            #ifdef __MINGW32__
-                fileStream.seekp(0, std::ios::end);
-            #endif
             fileStream << std::left << std::setw(9) << tag << " [" << buf << "] ";
         }
         put(msgString, args...);
@@ -106,7 +103,7 @@ private:
 
     boost::mutex m_mutex;
     QObject* eventReceiver;
-    std::ostream fileStream;
+    uofstream fileStream;
     bool debugEnabled;
 };
 
