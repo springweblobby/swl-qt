@@ -64,8 +64,8 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
 static void copyFile(const fs::path& from, const fs::path& to) {
     // Can't use due to a linking error, see http://tinyurl.com/p2tuaft
     //fs::copy_file(from, to);
-	std::istream src(get_ifilebuf(from, std::ios::in | std::ios::binary));
-	std::ostream dst(get_ofilebuf(to, std::ios::out | std::ios::binary));
+    uifstream src(from, std::ios::in | std::ios::binary);
+    uofstream dst(to, std::ios::out | std::ios::binary);
     dst << src.rdbuf();
 }
 void LobbyInterface::move(const fs::path& src, const fs::path& dst) {
@@ -153,7 +153,7 @@ QString LobbyInterface::getSpringHome() {
 #include <iostream>
 QString LobbyInterface::readSpringHomeSetting() {
     try {
-		std::istream in(get_ifilebuf(executablePath / "swlrc"));
+        uifstream in(executablePath / "swlrc");
         in.exceptions(std::ios::failbit);
         std::string str;
         std::getline(in, str);
@@ -170,7 +170,7 @@ QString LobbyInterface::readSpringHomeSetting() {
 
 void LobbyInterface::writeSpringHomeSetting(QString path) {
     springHomeSetting = path.toStdWString();
-	std::ostream out(get_ofilebuf(executablePath / "swlrc"));
+    uofstream out(executablePath / "swlrc");
     out << "springHome:" << toStdString(springHomeSetting.wstring()) << std::endl;
 }
 
@@ -271,7 +271,7 @@ QString LobbyInterface::listFilesPriv(QString qpath, bool dirs) {
 QString LobbyInterface::readFileLess(QString qpath, unsigned int lines) {
     // TODO: deque? Just read the file in the reverse order, geez.
     fs::path path = qpath.toStdWString();
-	std::istream in(get_ifilebuf(path));
+    uifstream in(path);
     if (!in) {
         logger.warning("readFileLess(): Could not open ", path);
         return "";
@@ -331,7 +331,7 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
 
     auto tempFile = fs::temp_directory_path();
     tempFile /= "weblobby_dl";
-	std::ostream fo(get_ofilebuf(tempFile, std::ios::out | std::ios::binary));
+    uofstream fo(tempFile, std::ios::out | std::ios::binary);
     if (fo.fail()) {
         logger.error("downloadFile(): can't open file: ", tempFile);
         return false;
@@ -354,7 +354,7 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
     curl_easy_cleanup(handle);
     if (fo.tellp() > 0) {
         fo.flush();
-		copyFile(tempFile, target);
+        copyFile(tempFile, target);
         #if defined Q_OS_LINUX || defined Q_OS_MAC
             if (target.string().find("pr-downloader") != std::string::npos)
                 chmod(target.c_str(), S_IRWXU | S_IRWXG | S_IROTH);
@@ -398,7 +398,7 @@ QObject* LobbyInterface::getUnitsyncAsync(QString qpath) {
 
 void LobbyInterface::createScript(QString qpath, QString script) {
     fs::path path = qpath.toStdWString();
-	std::ostream out(get_ofilebuf(path));
+    uofstream out(path);
     if (out.good())
         out << script.toStdString();
     else
@@ -437,7 +437,7 @@ void LobbyInterface::createUiKeys(QString qpath) {
     fs::path path = qpath.toStdWString();
     if (!fs::exists(path, ec)) {
         logger.info("Creating empty uikeys: ", path);
-		std::ostream out(get_ofilebuf(path));
+        uofstream out(path);
     }
 }
 
@@ -456,10 +456,10 @@ void LobbyInterface::deleteSpringSettings(QString qpath) {
 }
 
 void LobbyInterface::writeToFile(QString path, QString line) {
-	std::ostream out(get_ofilebuf(fs::path(path.toStdWString()), std::ios::app));
-	#ifdef __MINGW32__
-		out.seekp(0, std::ios::end);
-	#endif
+    uofstream out(fs::path(path.toStdWString()), std::ios::app);
+    #ifdef __MINGW32__
+        out.seekp(0, std::ios::end);
+    #endif
     out << line.toStdString() << std::endl;
 }
 
