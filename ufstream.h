@@ -3,9 +3,9 @@
 
 #include <stdio.h>
 #ifdef __MINGW32__
-    #include <ext/stdio_filebuf.h>
-    #include <share.h>
-#endif
+
+#include <ext/stdio_filebuf.h>
+#include <share.h>
 
 class char_filebuf : public __gnu_cxx::stdio_filebuf<char, std::char_traits<char>> {
     public:
@@ -73,5 +73,12 @@ class uofstream : public std::basic_ostream<char, std::char_traits<char>> {
         delete rdbuf();
     }
 };
+
+#else // __MINGW32__
+
+typedef boost::filesystem::ifstream uifstream;
+typedef boost::filesystem::ofstream uofstream;
+
+#endif // __MINGW32__
 
 #endif // UFSTREAM_H
