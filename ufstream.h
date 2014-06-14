@@ -67,7 +67,6 @@ class uofstream : public std::basic_ostream<char, std::char_traits<char>> {
             rdbuf(new char_filebuf(file, mode));
             clear();
         }
-        std::cout << "stream good: " << good() << std::endl;
     }
 
     virtual ~uofstream() {
