@@ -461,14 +461,14 @@ void LobbyInterface::writeToFile(QString path, QString line) {
 }
 
 void LobbyInterface::playSound(QString url) {
-    #if defined Q_OS_WIN32 || defined Q_OS_MAC
+    #ifdef GSTREAMER_PLAY_HACK
+        runCommand("gstreamer_play", { QString::fromStdWString((executablePath /
+            "gstreamer_play").wstring()) , url });
+    #else
         if (mediaPlayer.state() != QMediaPlayer::StoppedState)
             return;
         mediaPlayer.setMedia(QUrl(url));
         mediaPlayer.play();
-    #elif defined Q_OS_LINUX
-        runCommand("gstreamer_play", { QString::fromStdWString((executablePath /
-            "gstreamer_play").wstring()) , url });
     #endif
 }
 

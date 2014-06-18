@@ -8,11 +8,8 @@
 #include <QObject>
 #include <QEvent>
 #include <QStringList>
-#if defined Q_OS_WIN32 || defined Q_OS_MAC
+#ifndef GSTREAMER_PLAY_HACK
     #include <QMediaPlayer>
-#elif defined Q_OS_LINUX
-    #include <unistd.h>
-    #include <libgen.h>
 #endif
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
@@ -145,7 +142,7 @@ private:
     Logger logger;
     bool debugNetwork, debugCommands;
     NetworkHandler network;
-    #if defined Q_OS_WIN32 || defined Q_OS_MAC
+    #ifndef GSTREAMER_PLAY_HACK
         QMediaPlayer mediaPlayer;
     #endif
 
