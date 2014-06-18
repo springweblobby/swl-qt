@@ -16,7 +16,7 @@ void NetworkHandler::connect(std::string host, unsigned int port) {
 }
 
 // Called in the network thread.
-void NetworkHandler::onRead(const boost::system::error_code& ec, std::size_t bytes) {
+void NetworkHandler::onRead(const boost::system::error_code& ec, std::size_t /* bytes */) {
     if(!ec) {
         std::istream is(&readBuf);
         std::string msg;

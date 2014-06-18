@@ -290,7 +290,7 @@ QString LobbyInterface::readFileLess(QString qpath, unsigned int lines) {
     return res;
 }
 
-int curl_debug(CURL* hnld, curl_infotype type, char* str, size_t size, void* plogger) {
+int curl_debug(CURL* /* hnld */, curl_infotype type, char* str, size_t size, void* plogger) {
     Logger& logger = *(Logger*)plogger;
     char buf[2048];
     size = size > 2047 ? 2047 : size;
@@ -519,7 +519,7 @@ std::string LobbyInterface::escapeJs(const std::string& str) {
     return res;
 }
 
-int LobbyInterface::sendSomePacket(QString host, unsigned int port, QString msg) {
+int LobbyInterface::sendSomePacket(QString /* host */, unsigned int /* port */, QString /* msg */) {
     return -1;
     /* TODO: This is called from JS but the result is never used. The purpose of
      * learning the local port of a UDP socket is unclear.

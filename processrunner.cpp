@@ -206,7 +206,7 @@ void ProcessRunner::run() {
     auto stderrBuf = std::make_shared<asio::streambuf>();
     auto onRead = std::make_shared<std::function<void(const boost::system::error_code&, std::size_t)> >();
     auto onErrRead = std::make_shared<std::function<void(const boost::system::error_code&, std::size_t)> >();
-    *onRead = [=](const boost::system::error_code& ec, std::size_t bytes){
+    *onRead = [=](const boost::system::error_code& ec, std::size_t /* bytes */){
         if(!ec) {
             std::istream is(stdoutBuf.get());
             std::string msg;
@@ -215,7 +215,7 @@ void ProcessRunner::run() {
             asio::async_read_until(*stdout_pend, *stdoutBuf, &matchNewline, *onRead);
         }
     };
-    *onErrRead = [=](const boost::system::error_code& ec, std::size_t bytes){
+    *onErrRead = [=](const boost::system::error_code& ec, std::size_t /* bytes */){
         if(!ec) {
             std::istream is(stderrBuf.get());
             std::string msg;
