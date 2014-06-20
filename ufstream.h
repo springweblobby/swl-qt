@@ -70,6 +70,7 @@ class uofstream : public std::basic_ostream<char, std::char_traits<char>> {
     }
 
     virtual ~uofstream() {
+        std::flush(*this);
         delete rdbuf();
     }
 };
