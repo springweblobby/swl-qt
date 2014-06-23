@@ -1,34 +1,35 @@
-// On mingw lobbyinterface.h must be included first or you'll get compilation errors.
-#include "lobbyinterface.h"
-
 #include "weblobbywindow.h"
 #include <iostream>
 #include <QtNetwork>
 #include <QDesktopServices>
 
 
+MyPage::MyPage(QObject* parent) : QWebPage(parent), lobbyInterface(parent, mainFrame()) {
+    connect(mainFrame(), &QWebFrame::javaScriptWindowObjectCleared, [=](){
+        mainFrame()->addToJavaScriptWindowObject("QWeblobbyApplet", &lobbyInterface);
+    });
+
+    QWebSettings* settings = this->settings();
+    settings->setAttribute(QWebSettings::LocalStorageEnabled, true);
+    settings->setAttribute(QWebSettings::LocalContentCanAccessFileUrls, true);
+    settings->setAttribute(QWebSettings::LocalContentCanAccessRemoteUrls, true);
+}
+
 void MyPage::javaScriptConsoleMessage(const QString& message, int lineNumber,
                                       const QString& sourceID) {
-    if (*lobbyInterface)
-        (*lobbyInterface)->jsMessage(sourceID.toStdString(), lineNumber, message.toStdString());
+    lobbyInterface.jsMessage(sourceID.toStdString(), lineNumber, message.toStdString());
 }
 
 WebLobbyWindow::WebLobbyWindow(QWidget *parent) : QMainWindow(parent) {
     progress = 0;
-    lobbyInterface = NULL;
-
     QNetworkProxyFactory::setUseSystemConfiguration(true);
 
     view = new QWebView(this);
-    view->setPage(new MyPage(view, &lobbyInterface)); // dat hax
+    view->setPage(new MyPage(view));
     view->page()->setLinkDelegationPolicy(QWebPage::DelegateAllLinks);
+    view->installEventFilter(new F5Filter(this));
     setCentralWidget(view);
     setUnifiedTitleAndToolBarOnMac(true);
-
-    QWebSettings* settings = view->page()->settings();
-    settings->setAttribute(QWebSettings::LocalStorageEnabled, true);
-    settings->setAttribute(QWebSettings::LocalContentCanAccessFileUrls, true);
-    settings->setAttribute(QWebSettings::LocalContentCanAccessRemoteUrls, true);
 
     connect(view, SIGNAL(titleChanged(QString)), SLOT(adjustTitle()));
     connect(view, SIGNAL(loadProgress(int)), SLOT(setProgress(int)));
@@ -40,8 +41,6 @@ WebLobbyWindow::WebLobbyWindow(QWidget *parent) : QMainWindow(parent) {
     else
         view->load(QUrl("http://weblobby.springrts.com/qt/index.html"));
 
-    connect(view->page()->mainFrame(), SIGNAL(javaScriptWindowObjectCleared()),
-            this, SLOT(addJSObject()));
     connect(view, &QWebView::linkClicked, [](const QUrl& url){
         QDesktopServices::openUrl(url);
     });
@@ -65,11 +64,18 @@ void WebLobbyWindow::finishLoading(bool) {
     adjustTitle();
 }
 
-void WebLobbyWindow::addJSObject() {
-    // Create a new LobbyInterface every time a page loads. This is done so
-    // that reloading the page doesn't drag over the old state.
-    if (lobbyInterface)
-        delete lobbyInterface;
-    lobbyInterface = new LobbyInterface(this, view->page()->mainFrame());
-    view->page()->mainFrame()->addToJavaScriptWindowObject("QWeblobbyApplet", lobbyInterface);
+bool F5Filter::eventFilter(QObject* obj, QEvent* evt) {
+    if (evt->type() == QEvent::KeyPress) {
+        auto keyEvt = static_cast<QKeyEvent&>(*evt);
+        if (keyEvt.key() == Qt::Key_F5) {
+            auto view = dynamic_cast<QWebView*>(obj);
+            QUrl url = view->page()->mainFrame()->url();
+            view->setPage(new MyPage(view));
+            view->load(url);
+            //dynamic_cast<QWebView&>(*obj).triggerPageAction(QWebPage::ReloadAndBypassCache);
+		}
+        return true;
+    } else {
+        return QObject::eventFilter(obj, evt);
+    }
 }
