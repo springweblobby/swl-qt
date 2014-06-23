@@ -47,13 +47,6 @@ WebLobbyWindow::WebLobbyWindow(QWidget *parent) : QMainWindow(parent) {
     });
 }
 
-void WebLobbyWindow::viewSource() {
-    QNetworkAccessManager* accessManager = view->page()->networkAccessManager();
-    QNetworkRequest request(view->url());
-    QNetworkReply* reply = accessManager->get(request);
-    connect(reply, SIGNAL(finished()), this, SLOT(slotSourceDownloaded()));
-}
-
 void WebLobbyWindow::adjustTitle() {
     if (progress <= 0 || progress >= 100) {
         setWindowTitle(view->title());
@@ -70,9 +63,6 @@ void WebLobbyWindow::setProgress(int p) {
 void WebLobbyWindow::finishLoading(bool) {
     progress = 100;
     adjustTitle();
-    //view->page()->mainFrame()->evaluateJavaScript(jQuery);
-
-    //rotateImages(rotateAction->isChecked());
 }
 
 void WebLobbyWindow::addJSObject() {

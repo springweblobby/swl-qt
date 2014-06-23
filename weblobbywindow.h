@@ -4,11 +4,6 @@
 #include <QtWidgets>
 #include <QtWebKitWidgets>
 
-//!!
-//FIXME: We are currently not using the HTML5ApplicationViewer,
-//but the project includes it anyway. Either make use of it or discard it.
-//#include "html5applicationviewer.h"
-
 class QWebView;
 class LobbyInterface;
 
@@ -18,7 +13,7 @@ public:
 protected:
     void javaScriptConsoleMessage(const QString& message, int lineNumber,
                                   const QString& sourceID);
-    LobbyInterface** lobbyInterface; // double pointers ORLY?
+    LobbyInterface** lobbyInterface; // double pointers all the way across the sky
 };
 
 class WebLobbyWindow : public QMainWindow {
@@ -31,8 +26,6 @@ protected slots:
     void adjustTitle();
     void setProgress(int p);
     void finishLoading(bool);
-
-    void viewSource();
 
     void addJSObject();
 private:
