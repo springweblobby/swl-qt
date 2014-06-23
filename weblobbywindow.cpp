@@ -77,9 +77,10 @@ bool F5Filter::eventFilter(QObject* obj, QEvent* evt) {
             QUrl url = view->page()->mainFrame()->url();
             view->setPage(new MyPage(view));
             view->load(url);
-            //dynamic_cast<QWebView&>(*obj).triggerPageAction(QWebPage::ReloadAndBypassCache);
-		}
-        return true;
+            return true;
+		} else {
+            return QObject::eventFilter(obj, evt);
+        }
     } else {
         return QObject::eventFilter(obj, evt);
     }
