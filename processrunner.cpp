@@ -95,6 +95,7 @@ void ProcessRunner::run() {
             "LD_LIBRARY_PATH",
             "QT_PLUGIN_PATH",
             "GST_PLUGIN_PATH",
+            "OMP_THREAD_LIMIT",
 
             // Windows vars
             "ALLUSERSPROFILE",
