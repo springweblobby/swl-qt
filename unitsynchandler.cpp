@@ -14,11 +14,6 @@
     #error "Unknown target OS."
 #endif
 
-#include <chrono>
-//#define LOG_NS_START { std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count() << std::endl; }
-#define LOG_NS_START auto t1 = std::chrono::high_resolution_clock::now();
-#define LOG_NS_STOP auto t2 = std::chrono::high_resolution_clock::now(); std::cout << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << std::endl;
-
 UnitsyncHandler::UnitsyncHandler(QObject* parent, Logger& logger, boost::filesystem::path path) :
         QObject(parent), logger(logger), ready(false), handle(NULL) {
     logger.info("Loading unitsync at ", path);
@@ -573,7 +568,7 @@ QString UnitsyncHandler::jsReadFileVFS(int fd, int size) {
         std::snprintf(tmp, 8, "%%%.2hhX", readBuf[i + off]);
         res += QString(tmp);
     }
-    LOG_NS_START auto ret = res; LOG_NS_STOP return ret;
+    return res;
 }
 
 QString UnitsyncHandler::getNextError() {
@@ -582,7 +577,7 @@ QString UnitsyncHandler::getNextError() {
         throw bad_fptr("GetNextError");
     }
     logger.debug("call GetNextError(", ")");
-    LOG_NS_START auto ret = QString(fptr_GetNextError()); LOG_NS_STOP return ret;
+    return QString(fptr_GetNextError());
 }
 QString UnitsyncHandler::getSpringVersion() {
     if (fptr_GetSpringVersion == NULL) {
@@ -590,7 +585,7 @@ QString UnitsyncHandler::getSpringVersion() {
         throw bad_fptr("GetSpringVersion");
     }
     logger.debug("call GetSpringVersion(", ")");
-    LOG_NS_START auto ret = QString(fptr_GetSpringVersion()); LOG_NS_STOP return ret;
+    return QString(fptr_GetSpringVersion());
 }
 QString UnitsyncHandler::getSpringVersionPatchset() {
     if (fptr_GetSpringVersionPatchset == NULL) {
@@ -598,7 +593,7 @@ QString UnitsyncHandler::getSpringVersionPatchset() {
         throw bad_fptr("GetSpringVersionPatchset");
     }
     logger.debug("call GetSpringVersionPatchset(", ")");
-    LOG_NS_START auto ret = QString(fptr_GetSpringVersionPatchset()); LOG_NS_STOP return ret;
+    return QString(fptr_GetSpringVersionPatchset());
 }
 bool UnitsyncHandler::isSpringReleaseVersion() {
     if (fptr_IsSpringReleaseVersion == NULL) {
@@ -606,7 +601,7 @@ bool UnitsyncHandler::isSpringReleaseVersion() {
         throw bad_fptr("IsSpringReleaseVersion");
     }
     logger.debug("call IsSpringReleaseVersion(", ")");
-    LOG_NS_START auto ret = fptr_IsSpringReleaseVersion(); LOG_NS_STOP return ret;
+    return fptr_IsSpringReleaseVersion();
 }
 int UnitsyncHandler::init(bool isServer, int id) {
     if (fptr_Init == NULL) {
@@ -614,7 +609,7 @@ int UnitsyncHandler::init(bool isServer, int id) {
         throw bad_fptr("Init");
     }
     logger.debug("call Init(", isServer, ", ", id, ")");
-    LOG_NS_START auto ret = fptr_Init(isServer, id); LOG_NS_STOP return ret;
+    return fptr_Init(isServer, id);
 }
 void UnitsyncHandler::unInit() {
     if (fptr_UnInit == NULL) {
@@ -622,7 +617,7 @@ void UnitsyncHandler::unInit() {
         throw bad_fptr("UnInit");
     }
     logger.debug("call UnInit(", ")");
-    LOG_NS_START auto ret = 0; fptr_UnInit(); LOG_NS_STOP return;
+    return fptr_UnInit();
 }
 QString UnitsyncHandler::getWritableDataDirectory() {
     if (fptr_GetWritableDataDirectory == NULL) {
@@ -630,7 +625,7 @@ QString UnitsyncHandler::getWritableDataDirectory() {
         throw bad_fptr("GetWritableDataDirectory");
     }
     logger.debug("call GetWritableDataDirectory(", ")");
-    LOG_NS_START auto ret = QString(fptr_GetWritableDataDirectory()); LOG_NS_STOP return ret;
+    return QString(fptr_GetWritableDataDirectory());
 }
 int UnitsyncHandler::getDataDirectoryCount() {
     if (fptr_GetDataDirectoryCount == NULL) {
@@ -638,7 +633,7 @@ int UnitsyncHandler::getDataDirectoryCount() {
         throw bad_fptr("GetDataDirectoryCount");
     }
     logger.debug("call GetDataDirectoryCount(", ")");
-    LOG_NS_START auto ret = fptr_GetDataDirectoryCount(); LOG_NS_STOP return ret;
+    return fptr_GetDataDirectoryCount();
 }
 QString UnitsyncHandler::getDataDirectory(int index) {
     if (fptr_GetDataDirectory == NULL) {
@@ -646,7 +641,7 @@ QString UnitsyncHandler::getDataDirectory(int index) {
         throw bad_fptr("GetDataDirectory");
     }
     logger.debug("call GetDataDirectory(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetDataDirectory(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetDataDirectory(index));
 }
 int UnitsyncHandler::processUnits() {
     if (fptr_ProcessUnits == NULL) {
@@ -654,7 +649,7 @@ int UnitsyncHandler::processUnits() {
         throw bad_fptr("ProcessUnits");
     }
     logger.debug("call ProcessUnits(", ")");
-    LOG_NS_START auto ret = fptr_ProcessUnits(); LOG_NS_STOP return ret;
+    return fptr_ProcessUnits();
 }
 int UnitsyncHandler::getUnitCount() {
     if (fptr_GetUnitCount == NULL) {
@@ -662,7 +657,7 @@ int UnitsyncHandler::getUnitCount() {
         throw bad_fptr("GetUnitCount");
     }
     logger.debug("call GetUnitCount(", ")");
-    LOG_NS_START auto ret = fptr_GetUnitCount(); LOG_NS_STOP return ret;
+    return fptr_GetUnitCount();
 }
 QString UnitsyncHandler::getUnitName(int unit) {
     if (fptr_GetUnitName == NULL) {
@@ -670,7 +665,7 @@ QString UnitsyncHandler::getUnitName(int unit) {
         throw bad_fptr("GetUnitName");
     }
     logger.debug("call GetUnitName(", unit, ")");
-    LOG_NS_START auto ret = QString(fptr_GetUnitName(unit)); LOG_NS_STOP return ret;
+    return QString(fptr_GetUnitName(unit));
 }
 QString UnitsyncHandler::getFullUnitName(int unit) {
     if (fptr_GetFullUnitName == NULL) {
@@ -678,7 +673,7 @@ QString UnitsyncHandler::getFullUnitName(int unit) {
         throw bad_fptr("GetFullUnitName");
     }
     logger.debug("call GetFullUnitName(", unit, ")");
-    LOG_NS_START auto ret = QString(fptr_GetFullUnitName(unit)); LOG_NS_STOP return ret;
+    return QString(fptr_GetFullUnitName(unit));
 }
 void UnitsyncHandler::addArchive(QString archiveName) {
     if (fptr_AddArchive == NULL) {
@@ -686,7 +681,7 @@ void UnitsyncHandler::addArchive(QString archiveName) {
         throw bad_fptr("AddArchive");
     }
     logger.debug("call AddArchive(", archiveName.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = 0; fptr_AddArchive(archiveName.toStdString().c_str()); LOG_NS_STOP return;
+    return fptr_AddArchive(archiveName.toStdString().c_str());
 }
 void UnitsyncHandler::addAllArchives(QString rootArchiveName) {
     if (fptr_AddAllArchives == NULL) {
@@ -694,7 +689,7 @@ void UnitsyncHandler::addAllArchives(QString rootArchiveName) {
         throw bad_fptr("AddAllArchives");
     }
     logger.debug("call AddAllArchives(", rootArchiveName.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = 0; fptr_AddAllArchives(rootArchiveName.toStdString().c_str()); LOG_NS_STOP return;
+    return fptr_AddAllArchives(rootArchiveName.toStdString().c_str());
 }
 void UnitsyncHandler::removeAllArchives() {
     if (fptr_RemoveAllArchives == NULL) {
@@ -702,7 +697,7 @@ void UnitsyncHandler::removeAllArchives() {
         throw bad_fptr("RemoveAllArchives");
     }
     logger.debug("call RemoveAllArchives(", ")");
-    LOG_NS_START auto ret = 0; fptr_RemoveAllArchives(); LOG_NS_STOP return;
+    return fptr_RemoveAllArchives();
 }
 int UnitsyncHandler::getArchiveChecksum(QString archiveName) {
     if (fptr_GetArchiveChecksum == NULL) {
@@ -710,7 +705,7 @@ int UnitsyncHandler::getArchiveChecksum(QString archiveName) {
         throw bad_fptr("GetArchiveChecksum");
     }
     logger.debug("call GetArchiveChecksum(", archiveName.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_GetArchiveChecksum(archiveName.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_GetArchiveChecksum(archiveName.toStdString().c_str());
 }
 QString UnitsyncHandler::getArchivePath(QString archiveName) {
     if (fptr_GetArchivePath == NULL) {
@@ -718,7 +713,7 @@ QString UnitsyncHandler::getArchivePath(QString archiveName) {
         throw bad_fptr("GetArchivePath");
     }
     logger.debug("call GetArchivePath(", archiveName.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = QString(fptr_GetArchivePath(archiveName.toStdString().c_str())); LOG_NS_STOP return ret;
+    return QString(fptr_GetArchivePath(archiveName.toStdString().c_str()));
 }
 int UnitsyncHandler::getMapCount() {
     if (fptr_GetMapCount == NULL) {
@@ -726,7 +721,7 @@ int UnitsyncHandler::getMapCount() {
         throw bad_fptr("GetMapCount");
     }
     logger.debug("call GetMapCount(", ")");
-    LOG_NS_START auto ret = fptr_GetMapCount(); LOG_NS_STOP return ret;
+    return fptr_GetMapCount();
 }
 QString UnitsyncHandler::getMapName(int index) {
     if (fptr_GetMapName == NULL) {
@@ -734,7 +729,7 @@ QString UnitsyncHandler::getMapName(int index) {
         throw bad_fptr("GetMapName");
     }
     logger.debug("call GetMapName(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetMapName(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetMapName(index));
 }
 QString UnitsyncHandler::getMapFileName(int index) {
     if (fptr_GetMapFileName == NULL) {
@@ -742,7 +737,7 @@ QString UnitsyncHandler::getMapFileName(int index) {
         throw bad_fptr("GetMapFileName");
     }
     logger.debug("call GetMapFileName(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetMapFileName(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetMapFileName(index));
 }
 QString UnitsyncHandler::getMapDescription(int index) {
     if (fptr_GetMapDescription == NULL) {
@@ -750,7 +745,7 @@ QString UnitsyncHandler::getMapDescription(int index) {
         throw bad_fptr("GetMapDescription");
     }
     logger.debug("call GetMapDescription(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetMapDescription(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetMapDescription(index));
 }
 QString UnitsyncHandler::getMapAuthor(int index) {
     if (fptr_GetMapAuthor == NULL) {
@@ -758,7 +753,7 @@ QString UnitsyncHandler::getMapAuthor(int index) {
         throw bad_fptr("GetMapAuthor");
     }
     logger.debug("call GetMapAuthor(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetMapAuthor(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetMapAuthor(index));
 }
 int UnitsyncHandler::getMapWidth(int index) {
     if (fptr_GetMapWidth == NULL) {
@@ -766,7 +761,7 @@ int UnitsyncHandler::getMapWidth(int index) {
         throw bad_fptr("GetMapWidth");
     }
     logger.debug("call GetMapWidth(", index, ")");
-    LOG_NS_START auto ret = fptr_GetMapWidth(index); LOG_NS_STOP return ret;
+    return fptr_GetMapWidth(index);
 }
 int UnitsyncHandler::getMapHeight(int index) {
     if (fptr_GetMapHeight == NULL) {
@@ -774,7 +769,7 @@ int UnitsyncHandler::getMapHeight(int index) {
         throw bad_fptr("GetMapHeight");
     }
     logger.debug("call GetMapHeight(", index, ")");
-    LOG_NS_START auto ret = fptr_GetMapHeight(index); LOG_NS_STOP return ret;
+    return fptr_GetMapHeight(index);
 }
 int UnitsyncHandler::getMapTidalStrength(int index) {
     if (fptr_GetMapTidalStrength == NULL) {
@@ -782,7 +777,7 @@ int UnitsyncHandler::getMapTidalStrength(int index) {
         throw bad_fptr("GetMapTidalStrength");
     }
     logger.debug("call GetMapTidalStrength(", index, ")");
-    LOG_NS_START auto ret = fptr_GetMapTidalStrength(index); LOG_NS_STOP return ret;
+    return fptr_GetMapTidalStrength(index);
 }
 int UnitsyncHandler::getMapWindMin(int index) {
     if (fptr_GetMapWindMin == NULL) {
@@ -790,7 +785,7 @@ int UnitsyncHandler::getMapWindMin(int index) {
         throw bad_fptr("GetMapWindMin");
     }
     logger.debug("call GetMapWindMin(", index, ")");
-    LOG_NS_START auto ret = fptr_GetMapWindMin(index); LOG_NS_STOP return ret;
+    return fptr_GetMapWindMin(index);
 }
 int UnitsyncHandler::getMapWindMax(int index) {
     if (fptr_GetMapWindMax == NULL) {
@@ -798,7 +793,7 @@ int UnitsyncHandler::getMapWindMax(int index) {
         throw bad_fptr("GetMapWindMax");
     }
     logger.debug("call GetMapWindMax(", index, ")");
-    LOG_NS_START auto ret = fptr_GetMapWindMax(index); LOG_NS_STOP return ret;
+    return fptr_GetMapWindMax(index);
 }
 int UnitsyncHandler::getMapGravity(int index) {
     if (fptr_GetMapGravity == NULL) {
@@ -806,7 +801,7 @@ int UnitsyncHandler::getMapGravity(int index) {
         throw bad_fptr("GetMapGravity");
     }
     logger.debug("call GetMapGravity(", index, ")");
-    LOG_NS_START auto ret = fptr_GetMapGravity(index); LOG_NS_STOP return ret;
+    return fptr_GetMapGravity(index);
 }
 int UnitsyncHandler::getMapResourceCount(int index) {
     if (fptr_GetMapResourceCount == NULL) {
@@ -814,7 +809,7 @@ int UnitsyncHandler::getMapResourceCount(int index) {
         throw bad_fptr("GetMapResourceCount");
     }
     logger.debug("call GetMapResourceCount(", index, ")");
-    LOG_NS_START auto ret = fptr_GetMapResourceCount(index); LOG_NS_STOP return ret;
+    return fptr_GetMapResourceCount(index);
 }
 QString UnitsyncHandler::getMapResourceName(int index, int resourceIndex) {
     if (fptr_GetMapResourceName == NULL) {
@@ -822,7 +817,7 @@ QString UnitsyncHandler::getMapResourceName(int index, int resourceIndex) {
         throw bad_fptr("GetMapResourceName");
     }
     logger.debug("call GetMapResourceName(", index, ", ", resourceIndex, ")");
-    LOG_NS_START auto ret = QString(fptr_GetMapResourceName(index, resourceIndex)); LOG_NS_STOP return ret;
+    return QString(fptr_GetMapResourceName(index, resourceIndex));
 }
 float UnitsyncHandler::getMapResourceMax(int index, int resourceIndex) {
     if (fptr_GetMapResourceMax == NULL) {
@@ -830,7 +825,7 @@ float UnitsyncHandler::getMapResourceMax(int index, int resourceIndex) {
         throw bad_fptr("GetMapResourceMax");
     }
     logger.debug("call GetMapResourceMax(", index, ", ", resourceIndex, ")");
-    LOG_NS_START auto ret = fptr_GetMapResourceMax(index, resourceIndex); LOG_NS_STOP return ret;
+    return fptr_GetMapResourceMax(index, resourceIndex);
 }
 int UnitsyncHandler::getMapResourceExtractorRadius(int index, int resourceIndex) {
     if (fptr_GetMapResourceExtractorRadius == NULL) {
@@ -838,7 +833,7 @@ int UnitsyncHandler::getMapResourceExtractorRadius(int index, int resourceIndex)
         throw bad_fptr("GetMapResourceExtractorRadius");
     }
     logger.debug("call GetMapResourceExtractorRadius(", index, ", ", resourceIndex, ")");
-    LOG_NS_START auto ret = fptr_GetMapResourceExtractorRadius(index, resourceIndex); LOG_NS_STOP return ret;
+    return fptr_GetMapResourceExtractorRadius(index, resourceIndex);
 }
 int UnitsyncHandler::getMapPosCount(int index) {
     if (fptr_GetMapPosCount == NULL) {
@@ -846,7 +841,7 @@ int UnitsyncHandler::getMapPosCount(int index) {
         throw bad_fptr("GetMapPosCount");
     }
     logger.debug("call GetMapPosCount(", index, ")");
-    LOG_NS_START auto ret = fptr_GetMapPosCount(index); LOG_NS_STOP return ret;
+    return fptr_GetMapPosCount(index);
 }
 float UnitsyncHandler::getMapPosX(int index, int posIndex) {
     if (fptr_GetMapPosX == NULL) {
@@ -854,7 +849,7 @@ float UnitsyncHandler::getMapPosX(int index, int posIndex) {
         throw bad_fptr("GetMapPosX");
     }
     logger.debug("call GetMapPosX(", index, ", ", posIndex, ")");
-    LOG_NS_START auto ret = fptr_GetMapPosX(index, posIndex); LOG_NS_STOP return ret;
+    return fptr_GetMapPosX(index, posIndex);
 }
 float UnitsyncHandler::getMapPosZ(int index, int posIndex) {
     if (fptr_GetMapPosZ == NULL) {
@@ -862,7 +857,7 @@ float UnitsyncHandler::getMapPosZ(int index, int posIndex) {
         throw bad_fptr("GetMapPosZ");
     }
     logger.debug("call GetMapPosZ(", index, ", ", posIndex, ")");
-    LOG_NS_START auto ret = fptr_GetMapPosZ(index, posIndex); LOG_NS_STOP return ret;
+    return fptr_GetMapPosZ(index, posIndex);
 }
 float UnitsyncHandler::getMapMinHeight(QString mapName) {
     if (fptr_GetMapMinHeight == NULL) {
@@ -870,7 +865,7 @@ float UnitsyncHandler::getMapMinHeight(QString mapName) {
         throw bad_fptr("GetMapMinHeight");
     }
     logger.debug("call GetMapMinHeight(", mapName.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_GetMapMinHeight(mapName.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_GetMapMinHeight(mapName.toStdString().c_str());
 }
 float UnitsyncHandler::getMapMaxHeight(QString mapName) {
     if (fptr_GetMapMaxHeight == NULL) {
@@ -878,7 +873,7 @@ float UnitsyncHandler::getMapMaxHeight(QString mapName) {
         throw bad_fptr("GetMapMaxHeight");
     }
     logger.debug("call GetMapMaxHeight(", mapName.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_GetMapMaxHeight(mapName.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_GetMapMaxHeight(mapName.toStdString().c_str());
 }
 int UnitsyncHandler::getMapArchiveCount(QString mapName) {
     if (fptr_GetMapArchiveCount == NULL) {
@@ -886,7 +881,7 @@ int UnitsyncHandler::getMapArchiveCount(QString mapName) {
         throw bad_fptr("GetMapArchiveCount");
     }
     logger.debug("call GetMapArchiveCount(", mapName.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_GetMapArchiveCount(mapName.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_GetMapArchiveCount(mapName.toStdString().c_str());
 }
 QString UnitsyncHandler::getMapArchiveName(int index) {
     if (fptr_GetMapArchiveName == NULL) {
@@ -894,7 +889,7 @@ QString UnitsyncHandler::getMapArchiveName(int index) {
         throw bad_fptr("GetMapArchiveName");
     }
     logger.debug("call GetMapArchiveName(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetMapArchiveName(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetMapArchiveName(index));
 }
 int UnitsyncHandler::getMapChecksum(int index) {
     if (fptr_GetMapChecksum == NULL) {
@@ -902,7 +897,7 @@ int UnitsyncHandler::getMapChecksum(int index) {
         throw bad_fptr("GetMapChecksum");
     }
     logger.debug("call GetMapChecksum(", index, ")");
-    LOG_NS_START auto ret = fptr_GetMapChecksum(index); LOG_NS_STOP return ret;
+    return fptr_GetMapChecksum(index);
 }
 int UnitsyncHandler::getMapChecksumFromName(QString mapName) {
     if (fptr_GetMapChecksumFromName == NULL) {
@@ -910,7 +905,7 @@ int UnitsyncHandler::getMapChecksumFromName(QString mapName) {
         throw bad_fptr("GetMapChecksumFromName");
     }
     logger.debug("call GetMapChecksumFromName(", mapName.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_GetMapChecksumFromName(mapName.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_GetMapChecksumFromName(mapName.toStdString().c_str());
 }
 int UnitsyncHandler::getSkirmishAICount() {
     if (fptr_GetSkirmishAICount == NULL) {
@@ -918,7 +913,7 @@ int UnitsyncHandler::getSkirmishAICount() {
         throw bad_fptr("GetSkirmishAICount");
     }
     logger.debug("call GetSkirmishAICount(", ")");
-    LOG_NS_START auto ret = fptr_GetSkirmishAICount(); LOG_NS_STOP return ret;
+    return fptr_GetSkirmishAICount();
 }
 int UnitsyncHandler::getSkirmishAIInfoCount(int index) {
     if (fptr_GetSkirmishAIInfoCount == NULL) {
@@ -926,7 +921,7 @@ int UnitsyncHandler::getSkirmishAIInfoCount(int index) {
         throw bad_fptr("GetSkirmishAIInfoCount");
     }
     logger.debug("call GetSkirmishAIInfoCount(", index, ")");
-    LOG_NS_START auto ret = fptr_GetSkirmishAIInfoCount(index); LOG_NS_STOP return ret;
+    return fptr_GetSkirmishAIInfoCount(index);
 }
 QString UnitsyncHandler::getInfoKey(int index) {
     if (fptr_GetInfoKey == NULL) {
@@ -934,7 +929,7 @@ QString UnitsyncHandler::getInfoKey(int index) {
         throw bad_fptr("GetInfoKey");
     }
     logger.debug("call GetInfoKey(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetInfoKey(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetInfoKey(index));
 }
 QString UnitsyncHandler::getInfoType(int index) {
     if (fptr_GetInfoType == NULL) {
@@ -942,7 +937,7 @@ QString UnitsyncHandler::getInfoType(int index) {
         throw bad_fptr("GetInfoType");
     }
     logger.debug("call GetInfoType(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetInfoType(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetInfoType(index));
 }
 QString UnitsyncHandler::getInfoValueString(int index) {
     if (fptr_GetInfoValueString == NULL) {
@@ -950,7 +945,7 @@ QString UnitsyncHandler::getInfoValueString(int index) {
         throw bad_fptr("GetInfoValueString");
     }
     logger.debug("call GetInfoValueString(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetInfoValueString(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetInfoValueString(index));
 }
 int UnitsyncHandler::getInfoValueInteger(int index) {
     if (fptr_GetInfoValueInteger == NULL) {
@@ -958,7 +953,7 @@ int UnitsyncHandler::getInfoValueInteger(int index) {
         throw bad_fptr("GetInfoValueInteger");
     }
     logger.debug("call GetInfoValueInteger(", index, ")");
-    LOG_NS_START auto ret = fptr_GetInfoValueInteger(index); LOG_NS_STOP return ret;
+    return fptr_GetInfoValueInteger(index);
 }
 float UnitsyncHandler::getInfoValueFloat(int index) {
     if (fptr_GetInfoValueFloat == NULL) {
@@ -966,7 +961,7 @@ float UnitsyncHandler::getInfoValueFloat(int index) {
         throw bad_fptr("GetInfoValueFloat");
     }
     logger.debug("call GetInfoValueFloat(", index, ")");
-    LOG_NS_START auto ret = fptr_GetInfoValueFloat(index); LOG_NS_STOP return ret;
+    return fptr_GetInfoValueFloat(index);
 }
 bool UnitsyncHandler::getInfoValueBool(int index) {
     if (fptr_GetInfoValueBool == NULL) {
@@ -974,7 +969,7 @@ bool UnitsyncHandler::getInfoValueBool(int index) {
         throw bad_fptr("GetInfoValueBool");
     }
     logger.debug("call GetInfoValueBool(", index, ")");
-    LOG_NS_START auto ret = fptr_GetInfoValueBool(index); LOG_NS_STOP return ret;
+    return fptr_GetInfoValueBool(index);
 }
 QString UnitsyncHandler::getInfoDescription(int index) {
     if (fptr_GetInfoDescription == NULL) {
@@ -982,7 +977,7 @@ QString UnitsyncHandler::getInfoDescription(int index) {
         throw bad_fptr("GetInfoDescription");
     }
     logger.debug("call GetInfoDescription(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetInfoDescription(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetInfoDescription(index));
 }
 int UnitsyncHandler::getSkirmishAIOptionCount(int index) {
     if (fptr_GetSkirmishAIOptionCount == NULL) {
@@ -990,7 +985,7 @@ int UnitsyncHandler::getSkirmishAIOptionCount(int index) {
         throw bad_fptr("GetSkirmishAIOptionCount");
     }
     logger.debug("call GetSkirmishAIOptionCount(", index, ")");
-    LOG_NS_START auto ret = fptr_GetSkirmishAIOptionCount(index); LOG_NS_STOP return ret;
+    return fptr_GetSkirmishAIOptionCount(index);
 }
 int UnitsyncHandler::getPrimaryModCount() {
     if (fptr_GetPrimaryModCount == NULL) {
@@ -998,7 +993,7 @@ int UnitsyncHandler::getPrimaryModCount() {
         throw bad_fptr("GetPrimaryModCount");
     }
     logger.debug("call GetPrimaryModCount(", ")");
-    LOG_NS_START auto ret = fptr_GetPrimaryModCount(); LOG_NS_STOP return ret;
+    return fptr_GetPrimaryModCount();
 }
 int UnitsyncHandler::getPrimaryModInfoCount(int index) {
     if (fptr_GetPrimaryModInfoCount == NULL) {
@@ -1006,7 +1001,7 @@ int UnitsyncHandler::getPrimaryModInfoCount(int index) {
         throw bad_fptr("GetPrimaryModInfoCount");
     }
     logger.debug("call GetPrimaryModInfoCount(", index, ")");
-    LOG_NS_START auto ret = fptr_GetPrimaryModInfoCount(index); LOG_NS_STOP return ret;
+    return fptr_GetPrimaryModInfoCount(index);
 }
 QString UnitsyncHandler::getPrimaryModArchive(int index) {
     if (fptr_GetPrimaryModArchive == NULL) {
@@ -1014,7 +1009,7 @@ QString UnitsyncHandler::getPrimaryModArchive(int index) {
         throw bad_fptr("GetPrimaryModArchive");
     }
     logger.debug("call GetPrimaryModArchive(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetPrimaryModArchive(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetPrimaryModArchive(index));
 }
 int UnitsyncHandler::getPrimaryModArchiveCount(int index) {
     if (fptr_GetPrimaryModArchiveCount == NULL) {
@@ -1022,7 +1017,7 @@ int UnitsyncHandler::getPrimaryModArchiveCount(int index) {
         throw bad_fptr("GetPrimaryModArchiveCount");
     }
     logger.debug("call GetPrimaryModArchiveCount(", index, ")");
-    LOG_NS_START auto ret = fptr_GetPrimaryModArchiveCount(index); LOG_NS_STOP return ret;
+    return fptr_GetPrimaryModArchiveCount(index);
 }
 QString UnitsyncHandler::getPrimaryModArchiveList(int archive) {
     if (fptr_GetPrimaryModArchiveList == NULL) {
@@ -1030,7 +1025,7 @@ QString UnitsyncHandler::getPrimaryModArchiveList(int archive) {
         throw bad_fptr("GetPrimaryModArchiveList");
     }
     logger.debug("call GetPrimaryModArchiveList(", archive, ")");
-    LOG_NS_START auto ret = QString(fptr_GetPrimaryModArchiveList(archive)); LOG_NS_STOP return ret;
+    return QString(fptr_GetPrimaryModArchiveList(archive));
 }
 int UnitsyncHandler::getPrimaryModIndex(QString name) {
     if (fptr_GetPrimaryModIndex == NULL) {
@@ -1038,7 +1033,7 @@ int UnitsyncHandler::getPrimaryModIndex(QString name) {
         throw bad_fptr("GetPrimaryModIndex");
     }
     logger.debug("call GetPrimaryModIndex(", name.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_GetPrimaryModIndex(name.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_GetPrimaryModIndex(name.toStdString().c_str());
 }
 int UnitsyncHandler::getPrimaryModChecksum(int index) {
     if (fptr_GetPrimaryModChecksum == NULL) {
@@ -1046,7 +1041,7 @@ int UnitsyncHandler::getPrimaryModChecksum(int index) {
         throw bad_fptr("GetPrimaryModChecksum");
     }
     logger.debug("call GetPrimaryModChecksum(", index, ")");
-    LOG_NS_START auto ret = fptr_GetPrimaryModChecksum(index); LOG_NS_STOP return ret;
+    return fptr_GetPrimaryModChecksum(index);
 }
 int UnitsyncHandler::getPrimaryModChecksumFromName(QString name) {
     if (fptr_GetPrimaryModChecksumFromName == NULL) {
@@ -1054,7 +1049,7 @@ int UnitsyncHandler::getPrimaryModChecksumFromName(QString name) {
         throw bad_fptr("GetPrimaryModChecksumFromName");
     }
     logger.debug("call GetPrimaryModChecksumFromName(", name.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_GetPrimaryModChecksumFromName(name.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_GetPrimaryModChecksumFromName(name.toStdString().c_str());
 }
 int UnitsyncHandler::getSideCount() {
     if (fptr_GetSideCount == NULL) {
@@ -1062,7 +1057,7 @@ int UnitsyncHandler::getSideCount() {
         throw bad_fptr("GetSideCount");
     }
     logger.debug("call GetSideCount(", ")");
-    LOG_NS_START auto ret = fptr_GetSideCount(); LOG_NS_STOP return ret;
+    return fptr_GetSideCount();
 }
 QString UnitsyncHandler::getSideName(int side) {
     if (fptr_GetSideName == NULL) {
@@ -1070,7 +1065,7 @@ QString UnitsyncHandler::getSideName(int side) {
         throw bad_fptr("GetSideName");
     }
     logger.debug("call GetSideName(", side, ")");
-    LOG_NS_START auto ret = QString(fptr_GetSideName(side)); LOG_NS_STOP return ret;
+    return QString(fptr_GetSideName(side));
 }
 QString UnitsyncHandler::getSideStartUnit(int side) {
     if (fptr_GetSideStartUnit == NULL) {
@@ -1078,7 +1073,7 @@ QString UnitsyncHandler::getSideStartUnit(int side) {
         throw bad_fptr("GetSideStartUnit");
     }
     logger.debug("call GetSideStartUnit(", side, ")");
-    LOG_NS_START auto ret = QString(fptr_GetSideStartUnit(side)); LOG_NS_STOP return ret;
+    return QString(fptr_GetSideStartUnit(side));
 }
 int UnitsyncHandler::getMapOptionCount(QString mapName) {
     if (fptr_GetMapOptionCount == NULL) {
@@ -1086,7 +1081,7 @@ int UnitsyncHandler::getMapOptionCount(QString mapName) {
         throw bad_fptr("GetMapOptionCount");
     }
     logger.debug("call GetMapOptionCount(", mapName.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_GetMapOptionCount(mapName.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_GetMapOptionCount(mapName.toStdString().c_str());
 }
 int UnitsyncHandler::getModOptionCount() {
     if (fptr_GetModOptionCount == NULL) {
@@ -1094,7 +1089,7 @@ int UnitsyncHandler::getModOptionCount() {
         throw bad_fptr("GetModOptionCount");
     }
     logger.debug("call GetModOptionCount(", ")");
-    LOG_NS_START auto ret = fptr_GetModOptionCount(); LOG_NS_STOP return ret;
+    return fptr_GetModOptionCount();
 }
 int UnitsyncHandler::getCustomOptionCount(QString fileName) {
     if (fptr_GetCustomOptionCount == NULL) {
@@ -1102,7 +1097,7 @@ int UnitsyncHandler::getCustomOptionCount(QString fileName) {
         throw bad_fptr("GetCustomOptionCount");
     }
     logger.debug("call GetCustomOptionCount(", fileName.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_GetCustomOptionCount(fileName.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_GetCustomOptionCount(fileName.toStdString().c_str());
 }
 QString UnitsyncHandler::getOptionKey(int optIndex) {
     if (fptr_GetOptionKey == NULL) {
@@ -1110,7 +1105,7 @@ QString UnitsyncHandler::getOptionKey(int optIndex) {
         throw bad_fptr("GetOptionKey");
     }
     logger.debug("call GetOptionKey(", optIndex, ")");
-    LOG_NS_START auto ret = QString(fptr_GetOptionKey(optIndex)); LOG_NS_STOP return ret;
+    return QString(fptr_GetOptionKey(optIndex));
 }
 QString UnitsyncHandler::getOptionScope(int optIndex) {
     if (fptr_GetOptionScope == NULL) {
@@ -1118,7 +1113,7 @@ QString UnitsyncHandler::getOptionScope(int optIndex) {
         throw bad_fptr("GetOptionScope");
     }
     logger.debug("call GetOptionScope(", optIndex, ")");
-    LOG_NS_START auto ret = QString(fptr_GetOptionScope(optIndex)); LOG_NS_STOP return ret;
+    return QString(fptr_GetOptionScope(optIndex));
 }
 QString UnitsyncHandler::getOptionName(int optIndex) {
     if (fptr_GetOptionName == NULL) {
@@ -1126,7 +1121,7 @@ QString UnitsyncHandler::getOptionName(int optIndex) {
         throw bad_fptr("GetOptionName");
     }
     logger.debug("call GetOptionName(", optIndex, ")");
-    LOG_NS_START auto ret = QString(fptr_GetOptionName(optIndex)); LOG_NS_STOP return ret;
+    return QString(fptr_GetOptionName(optIndex));
 }
 QString UnitsyncHandler::getOptionSection(int optIndex) {
     if (fptr_GetOptionSection == NULL) {
@@ -1134,7 +1129,7 @@ QString UnitsyncHandler::getOptionSection(int optIndex) {
         throw bad_fptr("GetOptionSection");
     }
     logger.debug("call GetOptionSection(", optIndex, ")");
-    LOG_NS_START auto ret = QString(fptr_GetOptionSection(optIndex)); LOG_NS_STOP return ret;
+    return QString(fptr_GetOptionSection(optIndex));
 }
 QString UnitsyncHandler::getOptionStyle(int optIndex) {
     if (fptr_GetOptionStyle == NULL) {
@@ -1142,7 +1137,7 @@ QString UnitsyncHandler::getOptionStyle(int optIndex) {
         throw bad_fptr("GetOptionStyle");
     }
     logger.debug("call GetOptionStyle(", optIndex, ")");
-    LOG_NS_START auto ret = QString(fptr_GetOptionStyle(optIndex)); LOG_NS_STOP return ret;
+    return QString(fptr_GetOptionStyle(optIndex));
 }
 QString UnitsyncHandler::getOptionDesc(int optIndex) {
     if (fptr_GetOptionDesc == NULL) {
@@ -1150,7 +1145,7 @@ QString UnitsyncHandler::getOptionDesc(int optIndex) {
         throw bad_fptr("GetOptionDesc");
     }
     logger.debug("call GetOptionDesc(", optIndex, ")");
-    LOG_NS_START auto ret = QString(fptr_GetOptionDesc(optIndex)); LOG_NS_STOP return ret;
+    return QString(fptr_GetOptionDesc(optIndex));
 }
 int UnitsyncHandler::getOptionType(int optIndex) {
     if (fptr_GetOptionType == NULL) {
@@ -1158,7 +1153,7 @@ int UnitsyncHandler::getOptionType(int optIndex) {
         throw bad_fptr("GetOptionType");
     }
     logger.debug("call GetOptionType(", optIndex, ")");
-    LOG_NS_START auto ret = fptr_GetOptionType(optIndex); LOG_NS_STOP return ret;
+    return fptr_GetOptionType(optIndex);
 }
 int UnitsyncHandler::getOptionBoolDef(int optIndex) {
     if (fptr_GetOptionBoolDef == NULL) {
@@ -1166,7 +1161,7 @@ int UnitsyncHandler::getOptionBoolDef(int optIndex) {
         throw bad_fptr("GetOptionBoolDef");
     }
     logger.debug("call GetOptionBoolDef(", optIndex, ")");
-    LOG_NS_START auto ret = fptr_GetOptionBoolDef(optIndex); LOG_NS_STOP return ret;
+    return fptr_GetOptionBoolDef(optIndex);
 }
 float UnitsyncHandler::getOptionNumberDef(int optIndex) {
     if (fptr_GetOptionNumberDef == NULL) {
@@ -1174,7 +1169,7 @@ float UnitsyncHandler::getOptionNumberDef(int optIndex) {
         throw bad_fptr("GetOptionNumberDef");
     }
     logger.debug("call GetOptionNumberDef(", optIndex, ")");
-    LOG_NS_START auto ret = fptr_GetOptionNumberDef(optIndex); LOG_NS_STOP return ret;
+    return fptr_GetOptionNumberDef(optIndex);
 }
 float UnitsyncHandler::getOptionNumberMin(int optIndex) {
     if (fptr_GetOptionNumberMin == NULL) {
@@ -1182,7 +1177,7 @@ float UnitsyncHandler::getOptionNumberMin(int optIndex) {
         throw bad_fptr("GetOptionNumberMin");
     }
     logger.debug("call GetOptionNumberMin(", optIndex, ")");
-    LOG_NS_START auto ret = fptr_GetOptionNumberMin(optIndex); LOG_NS_STOP return ret;
+    return fptr_GetOptionNumberMin(optIndex);
 }
 float UnitsyncHandler::getOptionNumberMax(int optIndex) {
     if (fptr_GetOptionNumberMax == NULL) {
@@ -1190,7 +1185,7 @@ float UnitsyncHandler::getOptionNumberMax(int optIndex) {
         throw bad_fptr("GetOptionNumberMax");
     }
     logger.debug("call GetOptionNumberMax(", optIndex, ")");
-    LOG_NS_START auto ret = fptr_GetOptionNumberMax(optIndex); LOG_NS_STOP return ret;
+    return fptr_GetOptionNumberMax(optIndex);
 }
 float UnitsyncHandler::getOptionNumberStep(int optIndex) {
     if (fptr_GetOptionNumberStep == NULL) {
@@ -1198,7 +1193,7 @@ float UnitsyncHandler::getOptionNumberStep(int optIndex) {
         throw bad_fptr("GetOptionNumberStep");
     }
     logger.debug("call GetOptionNumberStep(", optIndex, ")");
-    LOG_NS_START auto ret = fptr_GetOptionNumberStep(optIndex); LOG_NS_STOP return ret;
+    return fptr_GetOptionNumberStep(optIndex);
 }
 QString UnitsyncHandler::getOptionStringDef(int optIndex) {
     if (fptr_GetOptionStringDef == NULL) {
@@ -1206,7 +1201,7 @@ QString UnitsyncHandler::getOptionStringDef(int optIndex) {
         throw bad_fptr("GetOptionStringDef");
     }
     logger.debug("call GetOptionStringDef(", optIndex, ")");
-    LOG_NS_START auto ret = QString(fptr_GetOptionStringDef(optIndex)); LOG_NS_STOP return ret;
+    return QString(fptr_GetOptionStringDef(optIndex));
 }
 int UnitsyncHandler::getOptionStringMaxLen(int optIndex) {
     if (fptr_GetOptionStringMaxLen == NULL) {
@@ -1214,7 +1209,7 @@ int UnitsyncHandler::getOptionStringMaxLen(int optIndex) {
         throw bad_fptr("GetOptionStringMaxLen");
     }
     logger.debug("call GetOptionStringMaxLen(", optIndex, ")");
-    LOG_NS_START auto ret = fptr_GetOptionStringMaxLen(optIndex); LOG_NS_STOP return ret;
+    return fptr_GetOptionStringMaxLen(optIndex);
 }
 int UnitsyncHandler::getOptionListCount(int optIndex) {
     if (fptr_GetOptionListCount == NULL) {
@@ -1222,7 +1217,7 @@ int UnitsyncHandler::getOptionListCount(int optIndex) {
         throw bad_fptr("GetOptionListCount");
     }
     logger.debug("call GetOptionListCount(", optIndex, ")");
-    LOG_NS_START auto ret = fptr_GetOptionListCount(optIndex); LOG_NS_STOP return ret;
+    return fptr_GetOptionListCount(optIndex);
 }
 QString UnitsyncHandler::getOptionListDef(int optIndex) {
     if (fptr_GetOptionListDef == NULL) {
@@ -1230,7 +1225,7 @@ QString UnitsyncHandler::getOptionListDef(int optIndex) {
         throw bad_fptr("GetOptionListDef");
     }
     logger.debug("call GetOptionListDef(", optIndex, ")");
-    LOG_NS_START auto ret = QString(fptr_GetOptionListDef(optIndex)); LOG_NS_STOP return ret;
+    return QString(fptr_GetOptionListDef(optIndex));
 }
 QString UnitsyncHandler::getOptionListItemKey(int optIndex, int itemIndex) {
     if (fptr_GetOptionListItemKey == NULL) {
@@ -1238,7 +1233,7 @@ QString UnitsyncHandler::getOptionListItemKey(int optIndex, int itemIndex) {
         throw bad_fptr("GetOptionListItemKey");
     }
     logger.debug("call GetOptionListItemKey(", optIndex, ", ", itemIndex, ")");
-    LOG_NS_START auto ret = QString(fptr_GetOptionListItemKey(optIndex, itemIndex)); LOG_NS_STOP return ret;
+    return QString(fptr_GetOptionListItemKey(optIndex, itemIndex));
 }
 QString UnitsyncHandler::getOptionListItemName(int optIndex, int itemIndex) {
     if (fptr_GetOptionListItemName == NULL) {
@@ -1246,7 +1241,7 @@ QString UnitsyncHandler::getOptionListItemName(int optIndex, int itemIndex) {
         throw bad_fptr("GetOptionListItemName");
     }
     logger.debug("call GetOptionListItemName(", optIndex, ", ", itemIndex, ")");
-    LOG_NS_START auto ret = QString(fptr_GetOptionListItemName(optIndex, itemIndex)); LOG_NS_STOP return ret;
+    return QString(fptr_GetOptionListItemName(optIndex, itemIndex));
 }
 QString UnitsyncHandler::getOptionListItemDesc(int optIndex, int itemIndex) {
     if (fptr_GetOptionListItemDesc == NULL) {
@@ -1254,7 +1249,7 @@ QString UnitsyncHandler::getOptionListItemDesc(int optIndex, int itemIndex) {
         throw bad_fptr("GetOptionListItemDesc");
     }
     logger.debug("call GetOptionListItemDesc(", optIndex, ", ", itemIndex, ")");
-    LOG_NS_START auto ret = QString(fptr_GetOptionListItemDesc(optIndex, itemIndex)); LOG_NS_STOP return ret;
+    return QString(fptr_GetOptionListItemDesc(optIndex, itemIndex));
 }
 int UnitsyncHandler::getModValidMapCount() {
     if (fptr_GetModValidMapCount == NULL) {
@@ -1262,7 +1257,7 @@ int UnitsyncHandler::getModValidMapCount() {
         throw bad_fptr("GetModValidMapCount");
     }
     logger.debug("call GetModValidMapCount(", ")");
-    LOG_NS_START auto ret = fptr_GetModValidMapCount(); LOG_NS_STOP return ret;
+    return fptr_GetModValidMapCount();
 }
 QString UnitsyncHandler::getModValidMap(int index) {
     if (fptr_GetModValidMap == NULL) {
@@ -1270,7 +1265,7 @@ QString UnitsyncHandler::getModValidMap(int index) {
         throw bad_fptr("GetModValidMap");
     }
     logger.debug("call GetModValidMap(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetModValidMap(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetModValidMap(index));
 }
 int UnitsyncHandler::openFileVFS(QString name) {
     if (fptr_OpenFileVFS == NULL) {
@@ -1278,7 +1273,7 @@ int UnitsyncHandler::openFileVFS(QString name) {
         throw bad_fptr("OpenFileVFS");
     }
     logger.debug("call OpenFileVFS(", name.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_OpenFileVFS(name.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_OpenFileVFS(name.toStdString().c_str());
 }
 void UnitsyncHandler::closeFileVFS(int file) {
     if (fptr_CloseFileVFS == NULL) {
@@ -1286,7 +1281,7 @@ void UnitsyncHandler::closeFileVFS(int file) {
         throw bad_fptr("CloseFileVFS");
     }
     logger.debug("call CloseFileVFS(", file, ")");
-    LOG_NS_START auto ret = 0; fptr_CloseFileVFS(file); LOG_NS_STOP return;
+    return fptr_CloseFileVFS(file);
 }
 int UnitsyncHandler::fileSizeVFS(int file) {
     if (fptr_FileSizeVFS == NULL) {
@@ -1294,7 +1289,7 @@ int UnitsyncHandler::fileSizeVFS(int file) {
         throw bad_fptr("FileSizeVFS");
     }
     logger.debug("call FileSizeVFS(", file, ")");
-    LOG_NS_START auto ret = fptr_FileSizeVFS(file); LOG_NS_STOP return ret;
+    return fptr_FileSizeVFS(file);
 }
 int UnitsyncHandler::initFindVFS(QString pattern) {
     if (fptr_InitFindVFS == NULL) {
@@ -1302,7 +1297,7 @@ int UnitsyncHandler::initFindVFS(QString pattern) {
         throw bad_fptr("InitFindVFS");
     }
     logger.debug("call InitFindVFS(", pattern.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_InitFindVFS(pattern.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_InitFindVFS(pattern.toStdString().c_str());
 }
 int UnitsyncHandler::initDirListVFS(QString path, QString pattern, QString modes) {
     if (fptr_InitDirListVFS == NULL) {
@@ -1310,7 +1305,7 @@ int UnitsyncHandler::initDirListVFS(QString path, QString pattern, QString modes
         throw bad_fptr("InitDirListVFS");
     }
     logger.debug("call InitDirListVFS(", path.toStdString().c_str(), ", ", pattern.toStdString().c_str(), ", ", modes.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_InitDirListVFS(path.toStdString().c_str(), pattern.toStdString().c_str(), modes.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_InitDirListVFS(path.toStdString().c_str(), pattern.toStdString().c_str(), modes.toStdString().c_str());
 }
 int UnitsyncHandler::initSubDirsVFS(QString path, QString pattern, QString modes) {
     if (fptr_InitSubDirsVFS == NULL) {
@@ -1318,7 +1313,7 @@ int UnitsyncHandler::initSubDirsVFS(QString path, QString pattern, QString modes
         throw bad_fptr("InitSubDirsVFS");
     }
     logger.debug("call InitSubDirsVFS(", path.toStdString().c_str(), ", ", pattern.toStdString().c_str(), ", ", modes.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_InitSubDirsVFS(path.toStdString().c_str(), pattern.toStdString().c_str(), modes.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_InitSubDirsVFS(path.toStdString().c_str(), pattern.toStdString().c_str(), modes.toStdString().c_str());
 }
 int UnitsyncHandler::openArchive(QString name) {
     if (fptr_OpenArchive == NULL) {
@@ -1326,7 +1321,7 @@ int UnitsyncHandler::openArchive(QString name) {
         throw bad_fptr("OpenArchive");
     }
     logger.debug("call OpenArchive(", name.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_OpenArchive(name.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_OpenArchive(name.toStdString().c_str());
 }
 void UnitsyncHandler::closeArchive(int archive) {
     if (fptr_CloseArchive == NULL) {
@@ -1334,7 +1329,7 @@ void UnitsyncHandler::closeArchive(int archive) {
         throw bad_fptr("CloseArchive");
     }
     logger.debug("call CloseArchive(", archive, ")");
-    LOG_NS_START auto ret = 0; fptr_CloseArchive(archive); LOG_NS_STOP return;
+    return fptr_CloseArchive(archive);
 }
 int UnitsyncHandler::openArchiveFile(int archive, QString name) {
     if (fptr_OpenArchiveFile == NULL) {
@@ -1342,7 +1337,7 @@ int UnitsyncHandler::openArchiveFile(int archive, QString name) {
         throw bad_fptr("OpenArchiveFile");
     }
     logger.debug("call OpenArchiveFile(", archive, ", ", name.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_OpenArchiveFile(archive, name.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_OpenArchiveFile(archive, name.toStdString().c_str());
 }
 void UnitsyncHandler::closeArchiveFile(int archive, int file) {
     if (fptr_CloseArchiveFile == NULL) {
@@ -1350,7 +1345,7 @@ void UnitsyncHandler::closeArchiveFile(int archive, int file) {
         throw bad_fptr("CloseArchiveFile");
     }
     logger.debug("call CloseArchiveFile(", archive, ", ", file, ")");
-    LOG_NS_START auto ret = 0; fptr_CloseArchiveFile(archive, file); LOG_NS_STOP return;
+    return fptr_CloseArchiveFile(archive, file);
 }
 int UnitsyncHandler::sizeArchiveFile(int archive, int file) {
     if (fptr_SizeArchiveFile == NULL) {
@@ -1358,7 +1353,7 @@ int UnitsyncHandler::sizeArchiveFile(int archive, int file) {
         throw bad_fptr("SizeArchiveFile");
     }
     logger.debug("call SizeArchiveFile(", archive, ", ", file, ")");
-    LOG_NS_START auto ret = fptr_SizeArchiveFile(archive, file); LOG_NS_STOP return ret;
+    return fptr_SizeArchiveFile(archive, file);
 }
 void UnitsyncHandler::setSpringConfigFile(QString fileNameAsAbsolutePath) {
     if (fptr_SetSpringConfigFile == NULL) {
@@ -1366,7 +1361,7 @@ void UnitsyncHandler::setSpringConfigFile(QString fileNameAsAbsolutePath) {
         throw bad_fptr("SetSpringConfigFile");
     }
     logger.debug("call SetSpringConfigFile(", fileNameAsAbsolutePath.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = 0; fptr_SetSpringConfigFile(fileNameAsAbsolutePath.toStdString().c_str()); LOG_NS_STOP return;
+    return fptr_SetSpringConfigFile(fileNameAsAbsolutePath.toStdString().c_str());
 }
 QString UnitsyncHandler::getSpringConfigFile() {
     if (fptr_GetSpringConfigFile == NULL) {
@@ -1374,7 +1369,7 @@ QString UnitsyncHandler::getSpringConfigFile() {
         throw bad_fptr("GetSpringConfigFile");
     }
     logger.debug("call GetSpringConfigFile(", ")");
-    LOG_NS_START auto ret = QString(fptr_GetSpringConfigFile()); LOG_NS_STOP return ret;
+    return QString(fptr_GetSpringConfigFile());
 }
 QString UnitsyncHandler::getSpringConfigString(QString name, QString defValue) {
     if (fptr_GetSpringConfigString == NULL) {
@@ -1382,7 +1377,7 @@ QString UnitsyncHandler::getSpringConfigString(QString name, QString defValue) {
         throw bad_fptr("GetSpringConfigString");
     }
     logger.debug("call GetSpringConfigString(", name.toStdString().c_str(), ", ", defValue.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = QString(fptr_GetSpringConfigString(name.toStdString().c_str(), defValue.toStdString().c_str())); LOG_NS_STOP return ret;
+    return QString(fptr_GetSpringConfigString(name.toStdString().c_str(), defValue.toStdString().c_str()));
 }
 int UnitsyncHandler::getSpringConfigInt(QString name, int defValue) {
     if (fptr_GetSpringConfigInt == NULL) {
@@ -1390,7 +1385,7 @@ int UnitsyncHandler::getSpringConfigInt(QString name, int defValue) {
         throw bad_fptr("GetSpringConfigInt");
     }
     logger.debug("call GetSpringConfigInt(", name.toStdString().c_str(), ", ", defValue, ")");
-    LOG_NS_START auto ret = fptr_GetSpringConfigInt(name.toStdString().c_str(), defValue); LOG_NS_STOP return ret;
+    return fptr_GetSpringConfigInt(name.toStdString().c_str(), defValue);
 }
 float UnitsyncHandler::getSpringConfigFloat(QString name, float defValue) {
     if (fptr_GetSpringConfigFloat == NULL) {
@@ -1398,7 +1393,7 @@ float UnitsyncHandler::getSpringConfigFloat(QString name, float defValue) {
         throw bad_fptr("GetSpringConfigFloat");
     }
     logger.debug("call GetSpringConfigFloat(", name.toStdString().c_str(), ", ", defValue, ")");
-    LOG_NS_START auto ret = fptr_GetSpringConfigFloat(name.toStdString().c_str(), defValue); LOG_NS_STOP return ret;
+    return fptr_GetSpringConfigFloat(name.toStdString().c_str(), defValue);
 }
 void UnitsyncHandler::setSpringConfigString(QString name, QString value) {
     if (fptr_SetSpringConfigString == NULL) {
@@ -1406,7 +1401,7 @@ void UnitsyncHandler::setSpringConfigString(QString name, QString value) {
         throw bad_fptr("SetSpringConfigString");
     }
     logger.debug("call SetSpringConfigString(", name.toStdString().c_str(), ", ", value.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = 0; fptr_SetSpringConfigString(name.toStdString().c_str(), value.toStdString().c_str()); LOG_NS_STOP return;
+    return fptr_SetSpringConfigString(name.toStdString().c_str(), value.toStdString().c_str());
 }
 void UnitsyncHandler::setSpringConfigInt(QString name, int value) {
     if (fptr_SetSpringConfigInt == NULL) {
@@ -1414,7 +1409,7 @@ void UnitsyncHandler::setSpringConfigInt(QString name, int value) {
         throw bad_fptr("SetSpringConfigInt");
     }
     logger.debug("call SetSpringConfigInt(", name.toStdString().c_str(), ", ", value, ")");
-    LOG_NS_START auto ret = 0; fptr_SetSpringConfigInt(name.toStdString().c_str(), value); LOG_NS_STOP return;
+    return fptr_SetSpringConfigInt(name.toStdString().c_str(), value);
 }
 void UnitsyncHandler::setSpringConfigFloat(QString name, float value) {
     if (fptr_SetSpringConfigFloat == NULL) {
@@ -1422,7 +1417,7 @@ void UnitsyncHandler::setSpringConfigFloat(QString name, float value) {
         throw bad_fptr("SetSpringConfigFloat");
     }
     logger.debug("call SetSpringConfigFloat(", name.toStdString().c_str(), ", ", value, ")");
-    LOG_NS_START auto ret = 0; fptr_SetSpringConfigFloat(name.toStdString().c_str(), value); LOG_NS_STOP return;
+    return fptr_SetSpringConfigFloat(name.toStdString().c_str(), value);
 }
 void UnitsyncHandler::deleteSpringConfigKey(QString name) {
     if (fptr_DeleteSpringConfigKey == NULL) {
@@ -1430,7 +1425,7 @@ void UnitsyncHandler::deleteSpringConfigKey(QString name) {
         throw bad_fptr("DeleteSpringConfigKey");
     }
     logger.debug("call DeleteSpringConfigKey(", name.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = 0; fptr_DeleteSpringConfigKey(name.toStdString().c_str()); LOG_NS_STOP return;
+    return fptr_DeleteSpringConfigKey(name.toStdString().c_str());
 }
 void UnitsyncHandler::lpClose() {
     if (fptr_lpClose == NULL) {
@@ -1438,7 +1433,7 @@ void UnitsyncHandler::lpClose() {
         throw bad_fptr("lpClose");
     }
     logger.debug("call lpClose(", ")");
-    LOG_NS_START auto ret = 0; fptr_lpClose(); LOG_NS_STOP return;
+    return fptr_lpClose();
 }
 int UnitsyncHandler::lpOpenFile(QString fileName, QString fileModes, QString accessModes) {
     if (fptr_lpOpenFile == NULL) {
@@ -1446,7 +1441,7 @@ int UnitsyncHandler::lpOpenFile(QString fileName, QString fileModes, QString acc
         throw bad_fptr("lpOpenFile");
     }
     logger.debug("call lpOpenFile(", fileName.toStdString().c_str(), ", ", fileModes.toStdString().c_str(), ", ", accessModes.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_lpOpenFile(fileName.toStdString().c_str(), fileModes.toStdString().c_str(), accessModes.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_lpOpenFile(fileName.toStdString().c_str(), fileModes.toStdString().c_str(), accessModes.toStdString().c_str());
 }
 int UnitsyncHandler::lpOpenSource(QString source, QString accessModes) {
     if (fptr_lpOpenSource == NULL) {
@@ -1454,7 +1449,7 @@ int UnitsyncHandler::lpOpenSource(QString source, QString accessModes) {
         throw bad_fptr("lpOpenSource");
     }
     logger.debug("call lpOpenSource(", source.toStdString().c_str(), ", ", accessModes.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_lpOpenSource(source.toStdString().c_str(), accessModes.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_lpOpenSource(source.toStdString().c_str(), accessModes.toStdString().c_str());
 }
 int UnitsyncHandler::lpExecute() {
     if (fptr_lpExecute == NULL) {
@@ -1462,7 +1457,7 @@ int UnitsyncHandler::lpExecute() {
         throw bad_fptr("lpExecute");
     }
     logger.debug("call lpExecute(", ")");
-    LOG_NS_START auto ret = fptr_lpExecute(); LOG_NS_STOP return ret;
+    return fptr_lpExecute();
 }
 QString UnitsyncHandler::lpErrorLog() {
     if (fptr_lpErrorLog == NULL) {
@@ -1470,7 +1465,7 @@ QString UnitsyncHandler::lpErrorLog() {
         throw bad_fptr("lpErrorLog");
     }
     logger.debug("call lpErrorLog(", ")");
-    LOG_NS_START auto ret = QString(fptr_lpErrorLog()); LOG_NS_STOP return ret;
+    return QString(fptr_lpErrorLog());
 }
 void UnitsyncHandler::lpAddTableInt(int key, int override) {
     if (fptr_lpAddTableInt == NULL) {
@@ -1478,7 +1473,7 @@ void UnitsyncHandler::lpAddTableInt(int key, int override) {
         throw bad_fptr("lpAddTableInt");
     }
     logger.debug("call lpAddTableInt(", key, ", ", override, ")");
-    LOG_NS_START auto ret = 0; fptr_lpAddTableInt(key, override); LOG_NS_STOP return;
+    return fptr_lpAddTableInt(key, override);
 }
 void UnitsyncHandler::lpAddTableStr(QString key, int override) {
     if (fptr_lpAddTableStr == NULL) {
@@ -1486,7 +1481,7 @@ void UnitsyncHandler::lpAddTableStr(QString key, int override) {
         throw bad_fptr("lpAddTableStr");
     }
     logger.debug("call lpAddTableStr(", key.toStdString().c_str(), ", ", override, ")");
-    LOG_NS_START auto ret = 0; fptr_lpAddTableStr(key.toStdString().c_str(), override); LOG_NS_STOP return;
+    return fptr_lpAddTableStr(key.toStdString().c_str(), override);
 }
 void UnitsyncHandler::lpEndTable() {
     if (fptr_lpEndTable == NULL) {
@@ -1494,7 +1489,7 @@ void UnitsyncHandler::lpEndTable() {
         throw bad_fptr("lpEndTable");
     }
     logger.debug("call lpEndTable(", ")");
-    LOG_NS_START auto ret = 0; fptr_lpEndTable(); LOG_NS_STOP return;
+    return fptr_lpEndTable();
 }
 void UnitsyncHandler::lpAddIntKeyIntVal(int key, int value) {
     if (fptr_lpAddIntKeyIntVal == NULL) {
@@ -1502,7 +1497,7 @@ void UnitsyncHandler::lpAddIntKeyIntVal(int key, int value) {
         throw bad_fptr("lpAddIntKeyIntVal");
     }
     logger.debug("call lpAddIntKeyIntVal(", key, ", ", value, ")");
-    LOG_NS_START auto ret = 0; fptr_lpAddIntKeyIntVal(key, value); LOG_NS_STOP return;
+    return fptr_lpAddIntKeyIntVal(key, value);
 }
 void UnitsyncHandler::lpAddStrKeyIntVal(QString key, int value) {
     if (fptr_lpAddStrKeyIntVal == NULL) {
@@ -1510,7 +1505,7 @@ void UnitsyncHandler::lpAddStrKeyIntVal(QString key, int value) {
         throw bad_fptr("lpAddStrKeyIntVal");
     }
     logger.debug("call lpAddStrKeyIntVal(", key.toStdString().c_str(), ", ", value, ")");
-    LOG_NS_START auto ret = 0; fptr_lpAddStrKeyIntVal(key.toStdString().c_str(), value); LOG_NS_STOP return;
+    return fptr_lpAddStrKeyIntVal(key.toStdString().c_str(), value);
 }
 void UnitsyncHandler::lpAddIntKeyBoolVal(int key, int value) {
     if (fptr_lpAddIntKeyBoolVal == NULL) {
@@ -1518,7 +1513,7 @@ void UnitsyncHandler::lpAddIntKeyBoolVal(int key, int value) {
         throw bad_fptr("lpAddIntKeyBoolVal");
     }
     logger.debug("call lpAddIntKeyBoolVal(", key, ", ", value, ")");
-    LOG_NS_START auto ret = 0; fptr_lpAddIntKeyBoolVal(key, value); LOG_NS_STOP return;
+    return fptr_lpAddIntKeyBoolVal(key, value);
 }
 void UnitsyncHandler::lpAddStrKeyBoolVal(QString key, int value) {
     if (fptr_lpAddStrKeyBoolVal == NULL) {
@@ -1526,7 +1521,7 @@ void UnitsyncHandler::lpAddStrKeyBoolVal(QString key, int value) {
         throw bad_fptr("lpAddStrKeyBoolVal");
     }
     logger.debug("call lpAddStrKeyBoolVal(", key.toStdString().c_str(), ", ", value, ")");
-    LOG_NS_START auto ret = 0; fptr_lpAddStrKeyBoolVal(key.toStdString().c_str(), value); LOG_NS_STOP return;
+    return fptr_lpAddStrKeyBoolVal(key.toStdString().c_str(), value);
 }
 void UnitsyncHandler::lpAddIntKeyFloatVal(int key, float value) {
     if (fptr_lpAddIntKeyFloatVal == NULL) {
@@ -1534,7 +1529,7 @@ void UnitsyncHandler::lpAddIntKeyFloatVal(int key, float value) {
         throw bad_fptr("lpAddIntKeyFloatVal");
     }
     logger.debug("call lpAddIntKeyFloatVal(", key, ", ", value, ")");
-    LOG_NS_START auto ret = 0; fptr_lpAddIntKeyFloatVal(key, value); LOG_NS_STOP return;
+    return fptr_lpAddIntKeyFloatVal(key, value);
 }
 void UnitsyncHandler::lpAddStrKeyFloatVal(QString key, float value) {
     if (fptr_lpAddStrKeyFloatVal == NULL) {
@@ -1542,7 +1537,7 @@ void UnitsyncHandler::lpAddStrKeyFloatVal(QString key, float value) {
         throw bad_fptr("lpAddStrKeyFloatVal");
     }
     logger.debug("call lpAddStrKeyFloatVal(", key.toStdString().c_str(), ", ", value, ")");
-    LOG_NS_START auto ret = 0; fptr_lpAddStrKeyFloatVal(key.toStdString().c_str(), value); LOG_NS_STOP return;
+    return fptr_lpAddStrKeyFloatVal(key.toStdString().c_str(), value);
 }
 void UnitsyncHandler::lpAddIntKeyStrVal(int key, QString value) {
     if (fptr_lpAddIntKeyStrVal == NULL) {
@@ -1550,7 +1545,7 @@ void UnitsyncHandler::lpAddIntKeyStrVal(int key, QString value) {
         throw bad_fptr("lpAddIntKeyStrVal");
     }
     logger.debug("call lpAddIntKeyStrVal(", key, ", ", value.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = 0; fptr_lpAddIntKeyStrVal(key, value.toStdString().c_str()); LOG_NS_STOP return;
+    return fptr_lpAddIntKeyStrVal(key, value.toStdString().c_str());
 }
 void UnitsyncHandler::lpAddStrKeyStrVal(QString key, QString value) {
     if (fptr_lpAddStrKeyStrVal == NULL) {
@@ -1558,7 +1553,7 @@ void UnitsyncHandler::lpAddStrKeyStrVal(QString key, QString value) {
         throw bad_fptr("lpAddStrKeyStrVal");
     }
     logger.debug("call lpAddStrKeyStrVal(", key.toStdString().c_str(), ", ", value.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = 0; fptr_lpAddStrKeyStrVal(key.toStdString().c_str(), value.toStdString().c_str()); LOG_NS_STOP return;
+    return fptr_lpAddStrKeyStrVal(key.toStdString().c_str(), value.toStdString().c_str());
 }
 int UnitsyncHandler::lpRootTable() {
     if (fptr_lpRootTable == NULL) {
@@ -1566,7 +1561,7 @@ int UnitsyncHandler::lpRootTable() {
         throw bad_fptr("lpRootTable");
     }
     logger.debug("call lpRootTable(", ")");
-    LOG_NS_START auto ret = fptr_lpRootTable(); LOG_NS_STOP return ret;
+    return fptr_lpRootTable();
 }
 int UnitsyncHandler::lpRootTableExpr(QString expr) {
     if (fptr_lpRootTableExpr == NULL) {
@@ -1574,7 +1569,7 @@ int UnitsyncHandler::lpRootTableExpr(QString expr) {
         throw bad_fptr("lpRootTableExpr");
     }
     logger.debug("call lpRootTableExpr(", expr.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_lpRootTableExpr(expr.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_lpRootTableExpr(expr.toStdString().c_str());
 }
 int UnitsyncHandler::lpSubTableInt(int key) {
     if (fptr_lpSubTableInt == NULL) {
@@ -1582,7 +1577,7 @@ int UnitsyncHandler::lpSubTableInt(int key) {
         throw bad_fptr("lpSubTableInt");
     }
     logger.debug("call lpSubTableInt(", key, ")");
-    LOG_NS_START auto ret = fptr_lpSubTableInt(key); LOG_NS_STOP return ret;
+    return fptr_lpSubTableInt(key);
 }
 int UnitsyncHandler::lpSubTableStr(QString key) {
     if (fptr_lpSubTableStr == NULL) {
@@ -1590,7 +1585,7 @@ int UnitsyncHandler::lpSubTableStr(QString key) {
         throw bad_fptr("lpSubTableStr");
     }
     logger.debug("call lpSubTableStr(", key.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_lpSubTableStr(key.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_lpSubTableStr(key.toStdString().c_str());
 }
 int UnitsyncHandler::lpSubTableExpr(QString expr) {
     if (fptr_lpSubTableExpr == NULL) {
@@ -1598,7 +1593,7 @@ int UnitsyncHandler::lpSubTableExpr(QString expr) {
         throw bad_fptr("lpSubTableExpr");
     }
     logger.debug("call lpSubTableExpr(", expr.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_lpSubTableExpr(expr.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_lpSubTableExpr(expr.toStdString().c_str());
 }
 void UnitsyncHandler::lpPopTable() {
     if (fptr_lpPopTable == NULL) {
@@ -1606,7 +1601,7 @@ void UnitsyncHandler::lpPopTable() {
         throw bad_fptr("lpPopTable");
     }
     logger.debug("call lpPopTable(", ")");
-    LOG_NS_START auto ret = 0; fptr_lpPopTable(); LOG_NS_STOP return;
+    return fptr_lpPopTable();
 }
 int UnitsyncHandler::lpGetKeyExistsInt(int key) {
     if (fptr_lpGetKeyExistsInt == NULL) {
@@ -1614,7 +1609,7 @@ int UnitsyncHandler::lpGetKeyExistsInt(int key) {
         throw bad_fptr("lpGetKeyExistsInt");
     }
     logger.debug("call lpGetKeyExistsInt(", key, ")");
-    LOG_NS_START auto ret = fptr_lpGetKeyExistsInt(key); LOG_NS_STOP return ret;
+    return fptr_lpGetKeyExistsInt(key);
 }
 int UnitsyncHandler::lpGetKeyExistsStr(QString key) {
     if (fptr_lpGetKeyExistsStr == NULL) {
@@ -1622,7 +1617,7 @@ int UnitsyncHandler::lpGetKeyExistsStr(QString key) {
         throw bad_fptr("lpGetKeyExistsStr");
     }
     logger.debug("call lpGetKeyExistsStr(", key.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_lpGetKeyExistsStr(key.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_lpGetKeyExistsStr(key.toStdString().c_str());
 }
 int UnitsyncHandler::lpGetIntKeyType(int key) {
     if (fptr_lpGetIntKeyType == NULL) {
@@ -1630,7 +1625,7 @@ int UnitsyncHandler::lpGetIntKeyType(int key) {
         throw bad_fptr("lpGetIntKeyType");
     }
     logger.debug("call lpGetIntKeyType(", key, ")");
-    LOG_NS_START auto ret = fptr_lpGetIntKeyType(key); LOG_NS_STOP return ret;
+    return fptr_lpGetIntKeyType(key);
 }
 int UnitsyncHandler::lpGetStrKeyType(QString key) {
     if (fptr_lpGetStrKeyType == NULL) {
@@ -1638,7 +1633,7 @@ int UnitsyncHandler::lpGetStrKeyType(QString key) {
         throw bad_fptr("lpGetStrKeyType");
     }
     logger.debug("call lpGetStrKeyType(", key.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_lpGetStrKeyType(key.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_lpGetStrKeyType(key.toStdString().c_str());
 }
 int UnitsyncHandler::lpGetIntKeyListCount() {
     if (fptr_lpGetIntKeyListCount == NULL) {
@@ -1646,7 +1641,7 @@ int UnitsyncHandler::lpGetIntKeyListCount() {
         throw bad_fptr("lpGetIntKeyListCount");
     }
     logger.debug("call lpGetIntKeyListCount(", ")");
-    LOG_NS_START auto ret = fptr_lpGetIntKeyListCount(); LOG_NS_STOP return ret;
+    return fptr_lpGetIntKeyListCount();
 }
 int UnitsyncHandler::lpGetIntKeyListEntry(int index) {
     if (fptr_lpGetIntKeyListEntry == NULL) {
@@ -1654,7 +1649,7 @@ int UnitsyncHandler::lpGetIntKeyListEntry(int index) {
         throw bad_fptr("lpGetIntKeyListEntry");
     }
     logger.debug("call lpGetIntKeyListEntry(", index, ")");
-    LOG_NS_START auto ret = fptr_lpGetIntKeyListEntry(index); LOG_NS_STOP return ret;
+    return fptr_lpGetIntKeyListEntry(index);
 }
 int UnitsyncHandler::lpGetStrKeyListCount() {
     if (fptr_lpGetStrKeyListCount == NULL) {
@@ -1662,7 +1657,7 @@ int UnitsyncHandler::lpGetStrKeyListCount() {
         throw bad_fptr("lpGetStrKeyListCount");
     }
     logger.debug("call lpGetStrKeyListCount(", ")");
-    LOG_NS_START auto ret = fptr_lpGetStrKeyListCount(); LOG_NS_STOP return ret;
+    return fptr_lpGetStrKeyListCount();
 }
 QString UnitsyncHandler::lpGetStrKeyListEntry(int index) {
     if (fptr_lpGetStrKeyListEntry == NULL) {
@@ -1670,7 +1665,7 @@ QString UnitsyncHandler::lpGetStrKeyListEntry(int index) {
         throw bad_fptr("lpGetStrKeyListEntry");
     }
     logger.debug("call lpGetStrKeyListEntry(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_lpGetStrKeyListEntry(index)); LOG_NS_STOP return ret;
+    return QString(fptr_lpGetStrKeyListEntry(index));
 }
 int UnitsyncHandler::lpGetIntKeyIntVal(int key, int defValue) {
     if (fptr_lpGetIntKeyIntVal == NULL) {
@@ -1678,7 +1673,7 @@ int UnitsyncHandler::lpGetIntKeyIntVal(int key, int defValue) {
         throw bad_fptr("lpGetIntKeyIntVal");
     }
     logger.debug("call lpGetIntKeyIntVal(", key, ", ", defValue, ")");
-    LOG_NS_START auto ret = fptr_lpGetIntKeyIntVal(key, defValue); LOG_NS_STOP return ret;
+    return fptr_lpGetIntKeyIntVal(key, defValue);
 }
 int UnitsyncHandler::lpGetStrKeyIntVal(QString key, int defValue) {
     if (fptr_lpGetStrKeyIntVal == NULL) {
@@ -1686,7 +1681,7 @@ int UnitsyncHandler::lpGetStrKeyIntVal(QString key, int defValue) {
         throw bad_fptr("lpGetStrKeyIntVal");
     }
     logger.debug("call lpGetStrKeyIntVal(", key.toStdString().c_str(), ", ", defValue, ")");
-    LOG_NS_START auto ret = fptr_lpGetStrKeyIntVal(key.toStdString().c_str(), defValue); LOG_NS_STOP return ret;
+    return fptr_lpGetStrKeyIntVal(key.toStdString().c_str(), defValue);
 }
 int UnitsyncHandler::lpGetIntKeyBoolVal(int key, int defValue) {
     if (fptr_lpGetIntKeyBoolVal == NULL) {
@@ -1694,7 +1689,7 @@ int UnitsyncHandler::lpGetIntKeyBoolVal(int key, int defValue) {
         throw bad_fptr("lpGetIntKeyBoolVal");
     }
     logger.debug("call lpGetIntKeyBoolVal(", key, ", ", defValue, ")");
-    LOG_NS_START auto ret = fptr_lpGetIntKeyBoolVal(key, defValue); LOG_NS_STOP return ret;
+    return fptr_lpGetIntKeyBoolVal(key, defValue);
 }
 int UnitsyncHandler::lpGetStrKeyBoolVal(QString key, int defValue) {
     if (fptr_lpGetStrKeyBoolVal == NULL) {
@@ -1702,7 +1697,7 @@ int UnitsyncHandler::lpGetStrKeyBoolVal(QString key, int defValue) {
         throw bad_fptr("lpGetStrKeyBoolVal");
     }
     logger.debug("call lpGetStrKeyBoolVal(", key.toStdString().c_str(), ", ", defValue, ")");
-    LOG_NS_START auto ret = fptr_lpGetStrKeyBoolVal(key.toStdString().c_str(), defValue); LOG_NS_STOP return ret;
+    return fptr_lpGetStrKeyBoolVal(key.toStdString().c_str(), defValue);
 }
 float UnitsyncHandler::lpGetIntKeyFloatVal(int key, float defValue) {
     if (fptr_lpGetIntKeyFloatVal == NULL) {
@@ -1710,7 +1705,7 @@ float UnitsyncHandler::lpGetIntKeyFloatVal(int key, float defValue) {
         throw bad_fptr("lpGetIntKeyFloatVal");
     }
     logger.debug("call lpGetIntKeyFloatVal(", key, ", ", defValue, ")");
-    LOG_NS_START auto ret = fptr_lpGetIntKeyFloatVal(key, defValue); LOG_NS_STOP return ret;
+    return fptr_lpGetIntKeyFloatVal(key, defValue);
 }
 float UnitsyncHandler::lpGetStrKeyFloatVal(QString key, float defValue) {
     if (fptr_lpGetStrKeyFloatVal == NULL) {
@@ -1718,7 +1713,7 @@ float UnitsyncHandler::lpGetStrKeyFloatVal(QString key, float defValue) {
         throw bad_fptr("lpGetStrKeyFloatVal");
     }
     logger.debug("call lpGetStrKeyFloatVal(", key.toStdString().c_str(), ", ", defValue, ")");
-    LOG_NS_START auto ret = fptr_lpGetStrKeyFloatVal(key.toStdString().c_str(), defValue); LOG_NS_STOP return ret;
+    return fptr_lpGetStrKeyFloatVal(key.toStdString().c_str(), defValue);
 }
 QString UnitsyncHandler::lpGetIntKeyStrVal(int key, QString defValue) {
     if (fptr_lpGetIntKeyStrVal == NULL) {
@@ -1726,7 +1721,7 @@ QString UnitsyncHandler::lpGetIntKeyStrVal(int key, QString defValue) {
         throw bad_fptr("lpGetIntKeyStrVal");
     }
     logger.debug("call lpGetIntKeyStrVal(", key, ", ", defValue.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = QString(fptr_lpGetIntKeyStrVal(key, defValue.toStdString().c_str())); LOG_NS_STOP return ret;
+    return QString(fptr_lpGetIntKeyStrVal(key, defValue.toStdString().c_str()));
 }
 QString UnitsyncHandler::lpGetStrKeyStrVal(QString key, QString defValue) {
     if (fptr_lpGetStrKeyStrVal == NULL) {
@@ -1734,7 +1729,7 @@ QString UnitsyncHandler::lpGetStrKeyStrVal(QString key, QString defValue) {
         throw bad_fptr("lpGetStrKeyStrVal");
     }
     logger.debug("call lpGetStrKeyStrVal(", key.toStdString().c_str(), ", ", defValue.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = QString(fptr_lpGetStrKeyStrVal(key.toStdString().c_str(), defValue.toStdString().c_str())); LOG_NS_STOP return ret;
+    return QString(fptr_lpGetStrKeyStrVal(key.toStdString().c_str(), defValue.toStdString().c_str()));
 }
 int UnitsyncHandler::processUnitsNoChecksum() {
     if (fptr_ProcessUnitsNoChecksum == NULL) {
@@ -1742,7 +1737,7 @@ int UnitsyncHandler::processUnitsNoChecksum() {
         throw bad_fptr("ProcessUnitsNoChecksum");
     }
     logger.debug("call ProcessUnitsNoChecksum(", ")");
-    LOG_NS_START auto ret = fptr_ProcessUnitsNoChecksum(); LOG_NS_STOP return ret;
+    return fptr_ProcessUnitsNoChecksum();
 }
 QString UnitsyncHandler::getInfoValue(int index) {
     if (fptr_GetInfoValue == NULL) {
@@ -1750,7 +1745,7 @@ QString UnitsyncHandler::getInfoValue(int index) {
         throw bad_fptr("GetInfoValue");
     }
     logger.debug("call GetInfoValue(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetInfoValue(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetInfoValue(index));
 }
 QString UnitsyncHandler::getPrimaryModName(int index) {
     if (fptr_GetPrimaryModName == NULL) {
@@ -1758,7 +1753,7 @@ QString UnitsyncHandler::getPrimaryModName(int index) {
         throw bad_fptr("GetPrimaryModName");
     }
     logger.debug("call GetPrimaryModName(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetPrimaryModName(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetPrimaryModName(index));
 }
 QString UnitsyncHandler::getPrimaryModShortName(int index) {
     if (fptr_GetPrimaryModShortName == NULL) {
@@ -1766,7 +1761,7 @@ QString UnitsyncHandler::getPrimaryModShortName(int index) {
         throw bad_fptr("GetPrimaryModShortName");
     }
     logger.debug("call GetPrimaryModShortName(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetPrimaryModShortName(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetPrimaryModShortName(index));
 }
 QString UnitsyncHandler::getPrimaryModVersion(int index) {
     if (fptr_GetPrimaryModVersion == NULL) {
@@ -1774,7 +1769,7 @@ QString UnitsyncHandler::getPrimaryModVersion(int index) {
         throw bad_fptr("GetPrimaryModVersion");
     }
     logger.debug("call GetPrimaryModVersion(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetPrimaryModVersion(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetPrimaryModVersion(index));
 }
 QString UnitsyncHandler::getPrimaryModMutator(int index) {
     if (fptr_GetPrimaryModMutator == NULL) {
@@ -1782,7 +1777,7 @@ QString UnitsyncHandler::getPrimaryModMutator(int index) {
         throw bad_fptr("GetPrimaryModMutator");
     }
     logger.debug("call GetPrimaryModMutator(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetPrimaryModMutator(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetPrimaryModMutator(index));
 }
 QString UnitsyncHandler::getPrimaryModGame(int index) {
     if (fptr_GetPrimaryModGame == NULL) {
@@ -1790,7 +1785,7 @@ QString UnitsyncHandler::getPrimaryModGame(int index) {
         throw bad_fptr("GetPrimaryModGame");
     }
     logger.debug("call GetPrimaryModGame(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetPrimaryModGame(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetPrimaryModGame(index));
 }
 QString UnitsyncHandler::getPrimaryModShortGame(int index) {
     if (fptr_GetPrimaryModShortGame == NULL) {
@@ -1798,7 +1793,7 @@ QString UnitsyncHandler::getPrimaryModShortGame(int index) {
         throw bad_fptr("GetPrimaryModShortGame");
     }
     logger.debug("call GetPrimaryModShortGame(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetPrimaryModShortGame(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetPrimaryModShortGame(index));
 }
 QString UnitsyncHandler::getPrimaryModDescription(int index) {
     if (fptr_GetPrimaryModDescription == NULL) {
@@ -1806,7 +1801,7 @@ QString UnitsyncHandler::getPrimaryModDescription(int index) {
         throw bad_fptr("GetPrimaryModDescription");
     }
     logger.debug("call GetPrimaryModDescription(", index, ")");
-    LOG_NS_START auto ret = QString(fptr_GetPrimaryModDescription(index)); LOG_NS_STOP return ret;
+    return QString(fptr_GetPrimaryModDescription(index));
 }
 int UnitsyncHandler::openArchiveType(QString name, QString type) {
     if (fptr_OpenArchiveType == NULL) {
@@ -1814,5 +1809,5 @@ int UnitsyncHandler::openArchiveType(QString name, QString type) {
         throw bad_fptr("OpenArchiveType");
     }
     logger.debug("call OpenArchiveType(", name.toStdString().c_str(), ", ", type.toStdString().c_str(), ")");
-    LOG_NS_START auto ret = fptr_OpenArchiveType(name.toStdString().c_str(), type.toStdString().c_str()); LOG_NS_STOP return ret;
+    return fptr_OpenArchiveType(name.toStdString().c_str(), type.toStdString().c_str());
 }
