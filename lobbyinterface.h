@@ -145,7 +145,7 @@ private:
     Logger logger;
     bool debugNetwork, debugCommands;
     NetworkHandler network;
-    #ifndef GSTREAMER_PLAY_HACK
+    #ifndef Q_OS_LINUX
         QMediaPlayer mediaPlayer;
     #endif
 

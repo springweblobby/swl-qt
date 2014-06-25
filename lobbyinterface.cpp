@@ -498,16 +498,31 @@ void LobbyInterface::playSound(QString url) {
                 logger.warning("playSound(): bad encoding.");
                 return;
             }
-            // It seems to force 44100 always but whatever.
+            // It seems to always force 44100 but whatever.
             logger.debug("playSound(): samle rate: ", rate);
-            int16_t buf[1024];
-            size_t done;
+
             int res;
-            uofstream fo("dump.raw");
-            while ((res = mpg123_read(mpg, (unsigned char*)buf, 1024 * sizeof(int16_t), &done)) == MPG123_OK || res == MPG123_DONE) {
-                fo.write((const char*)buf, done);
+            snd_pcm_t* pcm;
+            if ((res = snd_pcm_open(&pcm, "default", SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
+                logger.warning("playSound(): cannot open audio device: ", snd_strerror(res));
+                return;
+            }
+            if ((res = snd_pcm_set_params(pcm, SND_PCM_FORMAT_S16_LE, SND_PCM_ACCESS_RW_INTERLEAVED, 2, rate, 1, 1000000)) < 0) {
+                logger.warning("playSound(): cannot set audio device params: ", snd_strerror(res));
+                return;
             }
 
+            int16_t buf[1024];
+            size_t done;
+            while ((res = mpg123_read(mpg, (unsigned char*)buf, 1024 * sizeof(int16_t), &done)) == MPG123_OK || res == MPG123_DONE) {
+                snd_pcm_sframes_t frames = done / sizeof(int16_t) / 2;
+                snd_pcm_sframes_t written;
+                if ((written = snd_pcm_writei(pcm, buf, frames)) != frames) {
+                    logger.warning("playSound(): wrote ", written, " frames instead of ", frames);
+                }
+            }
+
+            snd_pcm_close(pcm);
             mpg123_delete(mpg);
         });
         thread.detach();
