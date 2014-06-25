@@ -22,7 +22,7 @@ HEADERS += \
 INCLUDEPATH += Boost.Process-0.5
 
 unix:!macx {
-    LIBS += -lboost_filesystem -lboost_system -lboost_thread -lboost_iostreams -lboost_chrono -lcurl -ldl
+    LIBS += -ldl -lboost_filesystem -lboost_system -lboost_thread -lboost_iostreams -lboost_chrono -lcurl -lmpg123
 }
 win32 {
     RC_FILE = icon.rc

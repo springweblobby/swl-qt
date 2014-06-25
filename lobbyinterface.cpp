@@ -460,10 +460,57 @@ void LobbyInterface::writeToFile(QString path, QString line) {
     out << line.toStdString() << std::endl;
 }
 
+#ifdef Q_OS_LINUX
+size_t feed_data(void* buf, size_t size, size_t mult, mpg123_handle* mpg) {
+    int err;
+    if ((err = mpg123_feed(mpg, (const unsigned char*)buf, size * mult)) != MPG123_OK)
+        std::cerr << "feed_data(): error " << err << std::endl;
+    return size * mult;
+}
+#endif
 void LobbyInterface::playSound(QString url) {
-    #ifdef GSTREAMER_PLAY_HACK
-        runCommand("gstreamer_play", { QString::fromStdWString((executablePath /
-            "gstreamer_play").wstring()) , url });
+    #ifdef Q_OS_LINUX
+        auto thread = boost::thread([=](){
+            mpg123_handle* mpg = mpg123_new(NULL, NULL);
+            mpg123_format_none(mpg);
+            if (mpg123_format(mpg, 44100, 2, MPG123_ENC_SIGNED_16) == MPG123_ERR) {
+                logger.warning("playSound(): couldn't set decoding format.");
+                return;
+            }
+            mpg123_open_feed(mpg);
+
+            auto handle = curl_easy_init();
+            curl_easy_setopt(handle, CURLOPT_URL, url.toStdString().c_str());
+            curl_easy_setopt(handle, CURLOPT_WRITEDATA, mpg);
+            curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, feed_data);
+
+            CURLcode err;
+            if ((err = curl_easy_perform(handle)) != 0) {
+                logger.warning("playSound(): can't access URL: ", url.toStdString(), ": ", curl_easy_strerror(err));
+                return;
+            }
+            curl_easy_cleanup(handle);
+
+            long rate;
+            int channels, enc;
+            mpg123_getformat(mpg, &rate, &channels, &enc);
+            if (channels != 2 || enc != MPG123_ENC_SIGNED_16) {
+                logger.warning("playSound(): bad encoding.");
+                return;
+            }
+            // It seems to force 44100 always but whatever.
+            logger.debug("playSound(): samle rate: ", rate);
+            int16_t buf[1024];
+            size_t done;
+            int res;
+            uofstream fo("dump.raw");
+            while ((res = mpg123_read(mpg, (unsigned char*)buf, 1024 * sizeof(int16_t), &done)) == MPG123_OK || res == MPG123_DONE) {
+                fo.write((const char*)buf, done);
+            }
+
+            mpg123_delete(mpg);
+        });
+        thread.detach();
     #else
         if (mediaPlayer.state() != QMediaPlayer::StoppedState)
             return;

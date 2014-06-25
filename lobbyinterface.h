@@ -8,7 +8,10 @@
 #include <QObject>
 #include <QEvent>
 #include <QStringList>
-#ifndef GSTREAMER_PLAY_HACK
+#ifdef Q_OS_LINUX
+    #include <alsa/asoundlib.h>
+    #include <mpg123.h>
+#else
     #include <QMediaPlayer>
 #endif
 #include <boost/asio.hpp>
