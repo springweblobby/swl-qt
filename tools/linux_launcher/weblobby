@@ -3,7 +3,7 @@
 # actual executable and all the libs and qt and gst plugins.
 # Don't forget to chmod ug+x weblobby.desktop
 
-# Take care of steam's crazy LD_PRELOAD.
+# Take care of Steam's crazy LD_PRELOAD.
 OLD_LD_PRELOAD=$LD_PRELOAD
 export LD_PRELOAD=
 
@@ -14,7 +14,6 @@ if [ ! -d lib ]; then
 fi
 export LD_LIBRARY_PATH=$PWD/lib
 export QT_PLUGIN_PATH=$PWD/lib
-export GST_PLUGIN_PATH=$PWD/lib/gst
 if [ -f weblobby.desktop ]; then
     sed -i -e "s,Icon=.*$,Icon=$PWD/lib/icon.png," weblobby.desktop
     sed -i -e "s,Exec=.*$,Exec=$PWD/weblobby," weblobby.desktop
@@ -26,8 +25,8 @@ if [ ! -d unused ]; then
     # It used to test all executables, but Steam makes every file executable,
     # including 1.4 gigs in evo_data...
     # So now the executable list should be reviewed manually.
-    for i in $(for i in *.so* weblobby gstreamer_play gst/* imageformats/* platforms/*; do LD_LIBRARY_PATH= ldd $i; done |
-            sed -e '/not /d;/libQt5/d;/libgst/d;/libicu/d;/libboost/d;s/^[[:space:]]*\([^ ]*\).*$/\1/'); do
+    for i in $(for i in *.so* weblobby imageformats/* platforms/*; do LD_LIBRARY_PATH= ldd $i; done |
+            sed -e '/not /d;/libQt5/d;/libicu/d;/libboost/d;s/^[[:space:]]*\([^ ]*\).*$/\1/'); do
         mv `basename $i` unused/ &> /dev/null
     done
     echo "Done."
