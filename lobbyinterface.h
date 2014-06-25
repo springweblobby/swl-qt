@@ -131,7 +131,7 @@ public slots:
     // The version number is major * 100 + minor.
     // major is incremented with every change in API.
     // js code working with version X.Y must work with X.0 too.
-    int getApiVersion() { return 101; }
+    int getApiVersion() { return 103; }
 private:
     QString listFilesPriv(QString path, bool dirs);
     void evalJs(const std::string&);
