@@ -522,6 +522,7 @@ void LobbyInterface::playSound(QString url) {
                 }
             }
 
+            snd_pcm_drain(pcm);
             snd_pcm_close(pcm);
             mpg123_delete(mpg);
         });
