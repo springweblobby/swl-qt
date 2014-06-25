@@ -2,6 +2,7 @@
 #include <iostream>
 #include <QtNetwork>
 #include <QDesktopServices>
+#include <QThread>
 
 
 MyPage::MyPage(QObject* parent) : QWebPage(parent), lobbyInterface(parent, mainFrame()) {
@@ -76,6 +77,8 @@ bool F5Filter::eventFilter(QObject* obj, QEvent* evt) {
             auto view = dynamic_cast<QWebView*>(obj);
             QUrl url = view->page()->mainFrame()->url();
             view->setPage(new MyPage(view));
+            // Give WebKit threads some time to catch up, prevents random hangs.
+            QThread::msleep(500);
             view->load(url);
             return true;
 		} else {
