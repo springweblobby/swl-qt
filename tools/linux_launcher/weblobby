@@ -19,16 +19,21 @@ if [ -f weblobby.desktop ]; then
     sed -i -e "s,Exec=.*$,Exec=$PWD/weblobby," weblobby.desktop
 fi
 cd lib
-if [ ! -d unused ]; then
+if [ -f UPDATE_DEPS ]; then
     echo -n "Checking deps..."
-    mkdir unused
+    if [ ! -d unused ]; then
+        mkdir unused
+    else
+        mv unused/* .
+    fi
     # It used to test all executables, but Steam makes every file executable,
     # including 1.4 gigs in evo_data...
-    # So now the executable list should be reviewed manually.
+    # So now the executable list has to be reviewed manually.
     for i in $(for i in *.so* weblobby imageformats/* platforms/*; do LD_LIBRARY_PATH= ldd $i; done |
             sed -e '/not /d;/libQt5/d;/libicu/d;/libboost/d;s/^[[:space:]]*\([^ ]*\).*$/\1/'); do
         mv `basename $i` unused/ &> /dev/null
     done
+    rm -f UPDATE_DEPS
     echo "Done."
 fi
 LD_PRELOAD=$OLD_LD_PRELOAD exec ./weblobby $@
