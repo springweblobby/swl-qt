@@ -1,0 +1,12 @@
+# Most cursor themes have hand1 and don't have pointing_hand.
+--- qtbase/src/plugins/platforms/xcb/qxcbcursor.cpp	2014-06-26 17:53:02.872772310 +0000
++++ qtbase/src/plugins/platforms/xcb/qxcbcursor.cpp	2014-06-26 17:53:14.130256892 +0000
+@@ -261,7 +261,7 @@
+     "blank",
+     "split_v",
+     "split_h",
+-    "pointing_hand",
++    "hand1",
+     "forbidden",
+     "whats_this",
+     "left_ptr_watch",
