@@ -1,7 +1,10 @@
 #!/bin/bash
 # Run this in qt/build after make to prepare a zip for release.
 
-make
+make || {
+    echo "make failed."
+    exit 1
+}
 
 ROOT=`dirname $PWD`
 QT_PLUGIN_PATH=${1:?Specify qt plugin path}
@@ -29,7 +32,10 @@ cp ~/.spring/weblobby/pr-downloader/pr-downloader . || {
     exit 1
 }
 cp -r $QT_PLUGIN_PATH/{platforms,imageformats} .
-$ROOT/tools/linux_launcher/collect_deps.py
+$ROOT/tools/linux_launcher/collect_deps.py || {
+    echo "Collecting libs failed."
+    exit 1
+}
 rm -f pr-downloader
 chmod -R u+x *
 cp $ROOT/icon.png .
