@@ -3,21 +3,21 @@ win32:QT += multimedia
 CONFIG += c++11
 unix:CONFIG += debug
 
-SOURCES += main.cpp \
-    weblobbywindow.cpp \
-    lobbyinterface.cpp \
-    networkhandler.cpp \
-    unitsynchandler.cpp \
-    unitsynchandler_t.cpp \
-    processrunner.cpp
+SOURCES += src/main.cpp \
+    src/weblobbywindow.cpp \
+    src/lobbyinterface.cpp \
+    src/networkhandler.cpp \
+    src/unitsynchandler.cpp \
+    src/unitsynchandler_t.cpp \
+    src/processrunner.cpp
 
 HEADERS += \
-    weblobbywindow.h \
-    lobbyinterface.h \
-    logger.h \
-    ufstream.h\
-    unitsynchandler.h\
-    unitsynchandler_t.h
+    src/weblobbywindow.h \
+    src/lobbyinterface.h \
+    src/logger.h \
+    src/ufstream.h\
+    src/unitsynchandler.h\
+    src/unitsynchandler_t.h
 
 INCLUDEPATH += Boost.Process-0.5
 
