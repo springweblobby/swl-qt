@@ -79,7 +79,7 @@ private:
     void onRead(const boost::system::error_code&, std::size_t);
     boost::asio::io_service service;
     boost::asio::io_service::work* work;
-    boost::asio::ip::tcp::resolver resolver;
+    boost::asio::ip::udp::resolver resolver;
     boost::asio::ip::tcp::socket socket;
     boost::asio::streambuf readBuf;
     boost::thread thread;

@@ -6,13 +6,21 @@ namespace ip = asio::ip;
 
 void NetworkHandler::connect(std::string host, unsigned int port) {
     logger.info("Connecting to uberserver on ", host, ":", port);
-    try {
-        auto it = resolver.resolve({ host, std::to_string(port) });
-        socket.connect({ it->endpoint().address(), it->endpoint().port() });
-        asio::async_read_until(socket, readBuf, '\n', boost::bind(&NetworkHandler::onRead, this, _1, _2));
-    } catch(boost::system::system_error e) {
-        logger.error("Could not connect to lobby server: ", e.what());
-    }
+    resolver.async_resolve({ host, std::to_string(port) },
+        [=](const boost::system::error_code& ec, ip::udp::resolver::iterator it){
+
+        if(ec) {
+            logger.error("Could not resolve host: ", ec.message());
+            return;
+        }
+        socket.async_connect({ it->endpoint().address(), it->endpoint().port() },
+            [=](const boost::system::error_code& ec){
+
+            if(ec)
+                logger.error("Could not connect to lobby server: ", ec.message());
+            asio::async_read_until(socket, readBuf, '\n', boost::bind(&NetworkHandler::onRead, this, _1, _2));
+        });
+    });
 }
 
 // Called in the network thread.
