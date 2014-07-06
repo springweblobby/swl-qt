@@ -37,18 +37,22 @@ void NetworkHandler::onRead(const boost::system::error_code& ec, std::size_t /* 
 }
 
 void NetworkHandler::send(std::string msg) {
-    try {
-        asio::write(socket, boost::asio::buffer(msg));
-    } catch(boost::system::system_error e) {
-        logger.warning("Could not send data to uberserver: ", e.what());
-    }
+    service.post([=]{
+        try {
+            asio::write(socket, boost::asio::buffer(msg));
+        } catch(boost::system::system_error e) {
+            logger.warning("Could not send data to uberserver: ", e.what());
+        }
+    });
 }
 
 void NetworkHandler::disconnect() {
-    if(socket.is_open()) {
-        logger.info("Disconnecting from uberserver.");
-        socket.close();
-    }
+    service.post([=]{
+        if(socket.is_open()) {
+            logger.info("Disconnecting from uberserver.");
+            socket.close();
+        }
+    });
 }
 
 void NetworkHandler::runService() {
