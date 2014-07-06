@@ -37,8 +37,10 @@ void NetworkHandler::send(std::string msg) {
 }
 
 void NetworkHandler::disconnect() {
-    logger.info("Disconnecting from uberserver.");
-    socket.close();
+    if(socket.is_open()) {
+        logger.info("Disconnecting from uberserver.");
+        socket.close();
+    }
 }
 
 void NetworkHandler::runService() {
