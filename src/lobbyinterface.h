@@ -25,7 +25,7 @@ class QWebFrame;
 
 class ProcessRunner {
 public:
-    ProcessRunner(QObject* eventReceiver, const std::string& cmd, const std::vector<std::wstring>& args);
+    ProcessRunner(QObject* eventReceiver, Logger& logger, const std::string& cmd, const std::vector<std::wstring>& args);
     ProcessRunner(ProcessRunner&&);
     ProcessRunner(const ProcessRunner&) = delete;
     ~ProcessRunner();
@@ -45,16 +45,19 @@ public:
     };
     // This event is posted when the process terminates.
     struct TerminateEvent : QEvent {
-        TerminateEvent(std::string cmd) : QEvent(QEvent::Type(TypeId)), cmd(cmd) {}
+        TerminateEvent(std::string cmd, int retCode) : QEvent(QEvent::Type(TypeId)), cmd(cmd), returnCode(retCode) {}
         std::string cmd;
+        int returnCode;
         static const int TypeId = QEvent::User + 4; // even more magic numbers
     };
 private:
     void runService();
     QObject* eventReceiver;
+    Logger& logger;
     std::string cmd;
     std::vector<std::wstring> args;
     std::function<void()> terminate_func;
+    int returnCode;
     boost::asio::io_service service;
     boost::thread runServiceThread, waitForExitThread;
 };

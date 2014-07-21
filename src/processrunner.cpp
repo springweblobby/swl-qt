@@ -181,7 +181,9 @@ void ProcessRunner::run() {
                 // Certainly not MSDN docs, that's for sure. No mention of that there.
                 // Man I hate WinAPI.
                 boost::system::error_code ec;
-                process::wait_for_exit(child, ec);
+                returnCode = process::wait_for_exit(child, ec);
+                if(returnCode != 0)
+                    logger.warning("Process ", cmd, " finished with error code ", returnCode);
 
                 // Close the streams and let the io_service thread send a termination message
                 // once it's done reading the data.
@@ -240,7 +242,7 @@ void ProcessRunner::terminate() {
     try {
         terminate_func();
     } catch(boost::system::system_error e) {
-        ; // who cares
+        logger.warning("Error terminating process ", cmd, ": ", e.what());
     }
 }
 
@@ -252,13 +254,14 @@ ProcessRunner::~ProcessRunner() {
         waitForExitThread.join();
 }
 
-ProcessRunner::ProcessRunner(QObject* eventReceiver, const std::string& cmd,
-        const std::vector<std::wstring>& args) : eventReceiver(eventReceiver), cmd(cmd), args(args) {
+ProcessRunner::ProcessRunner(QObject* eventReceiver, Logger& logger, const std::string& cmd,
+        const std::vector<std::wstring>& args) : eventReceiver(eventReceiver), logger(logger), cmd(cmd), args(args) {
 }
 
-ProcessRunner::ProcessRunner(ProcessRunner&& p) : eventReceiver(p.eventReceiver), cmd(p.cmd), args(p.args) {}
+ProcessRunner::ProcessRunner(ProcessRunner&& p) : eventReceiver(p.eventReceiver), logger(p.logger), cmd(p.cmd), args(p.args) {}
 
 void ProcessRunner::runService() {
     service.run();
-    QCoreApplication::postEvent(eventReceiver, new TerminateEvent(cmd));
+    waitForExitThread.join();
+    QCoreApplication::postEvent(eventReceiver, new TerminateEvent(cmd, returnCode));
 }

@@ -202,7 +202,7 @@ bool LobbyInterface::event(QEvent* evt) {
         return true;
     } else if (evt->type() == ProcessRunner::TerminateEvent::TypeId) {
         auto termEvt = dynamic_cast<ProcessRunner::TerminateEvent&>(*evt);
-        evalJs("commandStream('exit', '" + escapeJs(termEvt.cmd) + "')");
+        evalJs("commandStream('exit', '" + escapeJs(termEvt.cmd) + "', " + std::to_string(termEvt.returnCode) + ")");
         logger.info("Command finished: ", termEvt.cmd);
         if(processes.count(termEvt.cmd)) {
             processes.find(termEvt.cmd)->second.terminate();
@@ -421,7 +421,7 @@ void LobbyInterface::runCommand(QString qcmdName, QStringList cmd) {
         std::vector<std::wstring> args;
         for(auto i : cmd)
             args.push_back(i.toStdWString());
-        auto it = processes.insert(std::make_pair(cmdName, ProcessRunner(this, cmdName, args))).first;
+        auto it = processes.insert(std::make_pair(cmdName, ProcessRunner(this, logger, cmdName, args))).first;
         logger.info("Running command (", cmdName, "):\n", cmd.join(" ").toStdString());
         try {
             it->second.run();
