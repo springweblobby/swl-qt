@@ -29,11 +29,11 @@ void ProcessRunner::run() {
     using namespace boost::iostreams;
     #if defined BOOST_POSIX_API
         process::pipe stdout_pipe = process::create_pipe();
-        auto stdout_sink = file_descriptor_sink(stdout_pipe.sink, close_handle);
+        auto stdout_sink = std::make_shared<file_descriptor_sink>(stdout_pipe.sink, close_handle);
         auto stdout_pend = std::make_shared<process::pipe_end>(service, stdout_pipe.source);
 
         process::pipe stderr_pipe = process::create_pipe();
-        auto stderr_sink = file_descriptor_sink(stderr_pipe.sink, close_handle);
+        auto stderr_sink = std::make_shared<file_descriptor_sink>(stderr_pipe.sink, close_handle);
         auto stderr_pend = std::make_shared<process::pipe_end>(service, stderr_pipe.source);
     #elif defined BOOST_WINDOWS_API
         static std::minstd_rand rand(std::time(NULL));
@@ -43,14 +43,14 @@ void ProcessRunner::run() {
             PIPE_TYPE_BYTE | PIPE_REJECT_REMOTE_CLIENTS, 1, 1024*32, 1024*32, 0, NULL);
         HANDLE stdout_pipe_sink = CreateFile((pipe_name + L"stdout").c_str(), GENERIC_WRITE, 0, NULL,
             OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-        auto stdout_sink = file_descriptor_sink(stdout_pipe_sink, never_close_handle);
+        auto stdout_sink = std::make_shared<file_descriptor_sink>(stdout_pipe_sink, never_close_handle);
         auto stdout_pend = std::make_shared<process::pipe_end>(service, stdout_pipe_source);
 
         HANDLE stderr_pipe_source = CreateNamedPipe((pipe_name + L"stderr").c_str(), PIPE_ACCESS_INBOUND | FILE_FLAG_OVERLAPPED,
             PIPE_TYPE_BYTE | PIPE_REJECT_REMOTE_CLIENTS, 1, 1024*32, 1024*32, 0, NULL);
         HANDLE stderr_pipe_sink = CreateFile((pipe_name + L"stderr").c_str(), GENERIC_WRITE, 0, NULL,
             OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-        auto stderr_sink = file_descriptor_sink(stderr_pipe_sink, never_close_handle);
+        auto stderr_sink = std::make_shared<file_descriptor_sink>(stderr_pipe_sink, never_close_handle);
         auto stderr_pend = std::make_shared<process::pipe_end>(service, stderr_pipe_source);
     #endif
 
@@ -160,8 +160,8 @@ void ProcessRunner::run() {
                         set_args(args),
                         set_env(wenv),
                     #endif
-                    bind_stdout(stdout_sink),
-                    bind_stderr(stderr_sink),
+                    bind_stdout(*stdout_sink),
+                    bind_stderr(*stderr_sink),
                     close_stdin(),
                     #ifdef BOOST_POSIX_API
                         notify_io_service(service),
@@ -175,14 +175,19 @@ void ProcessRunner::run() {
                     HANDLE native_handle = child.process_handle();
                     terminate_func = [native_handle]() { TerminateProcess(native_handle, EXIT_FAILURE); };
                 #endif
+
                 // Now who would have guessed that calling WaitForSingleObject() on a process
                 // in a thread other than the thread where you created the process doesn't work?
                 // Certainly not MSDN docs, that's for sure. No mention of that there.
                 // Man I hate WinAPI.
                 boost::system::error_code ec;
                 process::wait_for_exit(child, ec);
-                service.stop();
-                QCoreApplication::postEvent(eventReceiver, new TerminateEvent(cmd));
+
+                // Close the streams and let the io_service thread send a termination message
+                // once it's done reading the data.
+                stdout_sink->close();
+                stderr_sink->close();
+
                 #ifdef BOOST_WINDOWS_API
                     for(auto i : { stdout_pipe_source, stdout_pipe_sink, stderr_pipe_source, stderr_pipe_sink })
                         CloseHandle(i);
@@ -255,4 +260,5 @@ ProcessRunner::ProcessRunner(ProcessRunner&& p) : eventReceiver(p.eventReceiver)
 
 void ProcessRunner::runService() {
     service.run();
+    QCoreApplication::postEvent(eventReceiver, new TerminateEvent(cmd));
 }
