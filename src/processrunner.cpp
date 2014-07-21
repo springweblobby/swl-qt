@@ -262,6 +262,7 @@ ProcessRunner::ProcessRunner(ProcessRunner&& p) : eventReceiver(p.eventReceiver)
 
 void ProcessRunner::runService() {
     service.run();
-    waitForExitThread.join();
+    if(waitForExitThread.joinable())
+        waitForExitThread.join();
     QCoreApplication::postEvent(eventReceiver, new TerminateEvent(cmd, returnCode));
 }
