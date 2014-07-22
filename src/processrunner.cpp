@@ -187,11 +187,11 @@ void ProcessRunner::run() {
 
                 // Close the streams and let the io_service thread send a termination message
                 // once it's done reading the data.
-                stdout_sink->close();
-                stderr_sink->close();
-
-                #ifdef BOOST_WINDOWS_API
-                    for(auto i : { stdout_pipe_source, stdout_pipe_sink, stderr_pipe_source, stderr_pipe_sink })
+                #if defined BOOST_POSIX_API
+                    stdout_sink->close();
+                    stderr_sink->close();
+                #elif defined BOOST_WINDOWS_API
+                    for(auto i : { stdout_pipe_sink, stderr_pipe_sink })
                         CloseHandle(i);
                 #endif
 
