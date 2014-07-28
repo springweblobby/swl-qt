@@ -13,7 +13,6 @@
 #include <curl/curl.h>
 #include <fstream>
 #include <ctime>
-#include <cmath>
 #include <deque>
 #include <algorithm>
 #if defined Q_OS_LINUX || defined Q_OS_MAC
@@ -320,7 +319,7 @@ struct ProgressData { std::string name; QObject* eventReceiver; };
 int progress_function(ProgressData data, double dtotal, double dnow, double /*utotal*/, double /*unow*/) {
     if (data.eventReceiver)
         QCoreApplication::postEvent(data.eventReceiver, new LobbyInterface::DownloadEvent(data.name, "progress:" +
-            std::to_string(dtotal < 0.001 ? 0 : std::lround(dnow/dtotal*100))));
+            std::to_string(dnow) + ":" + std::to_string(dtotal)));
     return 0;
 }
 size_t static write_data(void* buf, size_t size, size_t mult, void* file) {
