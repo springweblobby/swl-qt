@@ -94,10 +94,15 @@ class LobbyInterface : public QObject {
     Q_OBJECT
 public:
     explicit LobbyInterface(QObject *parent, QWebFrame *frame);
-    ~LobbyInterface() {
-        network.disconnect();
-    }
+    ~LobbyInterface();
     bool event(QEvent* evt);
+
+    // This is posted for asynchronous HTTP downloads.
+    struct DownloadEvent : QEvent {
+        DownloadEvent(std::string name, std::string msg) : QEvent(QEvent::Type(TypeId)), name(name), msg(msg) {}
+        std::string name, msg;
+        static const int TypeId = QEvent::User + 6; // grep for 'magic' to check for conflicts
+    };
 signals:
 public slots:
     //add public functions here
@@ -123,6 +128,7 @@ public slots:
     void disconnect();
     void send(QString msg);
     bool downloadFile(QString url, QString target);
+    void startDownload(QString name, QString url, QString file, bool checkIfModified);
     unsigned int getUserID();
     int sendSomePacket(QString host, unsigned int port, QString msg);
 
@@ -140,6 +146,7 @@ private:
     void evalJs(const std::string&);
     std::string escapeJs(const std::string&);
     void move(const boost::filesystem::path& from, const boost::filesystem::path& to);
+    bool downloadFile(QString name, QString qurl, QString qtarget, bool checkIfModified, QObject* eventReceiver);
 
     std::string os;
     boost::filesystem::path springHome;
@@ -156,6 +163,9 @@ private:
     std::map<boost::filesystem::path, UnitsyncHandler> unitsyncs;
     std::map<boost::filesystem::path, UnitsyncHandlerAsync> unitsyncs_async;
     std::map<std::string, ProcessRunner> processes;
+    // This doesn't ever get cleared for simplicity on the presumption that
+    // there are never enough downloads for that to matter.
+    std::vector<boost::thread> downloadThreads;
 };
 
 // utf-8 string to utf-16 (on windows).

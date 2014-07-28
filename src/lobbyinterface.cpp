@@ -13,6 +13,7 @@
 #include <curl/curl.h>
 #include <fstream>
 #include <ctime>
+#include <cmath>
 #include <deque>
 #include <algorithm>
 #if defined Q_OS_LINUX || defined Q_OS_MAC
@@ -59,6 +60,14 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
     #elif defined Q_OS_MAC
         #error TODO: _NSGetExecutablePath()
     #endif
+}
+
+LobbyInterface::~LobbyInterface() {
+    network.disconnect();
+    for (auto it = downloadThreads.begin(); it != downloadThreads.end(); it++) {
+        if (it->joinable())
+            it->join();
+    }
 }
 
 static void copyFile(const fs::path& from, const fs::path& to) {
@@ -150,7 +159,6 @@ QString LobbyInterface::getSpringHome() {
     return QString::fromStdWString(springHome.wstring());
 }
 
-#include <iostream>
 QString LobbyInterface::readSpringHomeSetting() {
     try {
         uifstream in(executablePath / "swlrc");
@@ -212,6 +220,10 @@ bool LobbyInterface::event(QEvent* evt) {
     } else if (evt->type() == UnitsyncHandlerAsync::ResultEvent::TypeId) {
         auto resEvt = dynamic_cast<UnitsyncHandlerAsync::ResultEvent&>(*evt);
         evalJs("unitsyncResult('" + escapeJs(resEvt.id) + "', '" + escapeJs(resEvt.type) + "', '" + escapeJs(resEvt.res) + "')");
+        return true;
+    } else if (evt->type() == DownloadEvent::TypeId) {
+        auto resEvt = dynamic_cast<DownloadEvent&>(*evt);
+        evalJs("downloadMessage('" + escapeJs(resEvt.name) + "', '" + escapeJs(resEvt.msg) + "')");
         return true;
     } else {
         return QObject::event(evt);
@@ -304,18 +316,26 @@ int curl_debug(CURL* /* hnld */, curl_infotype type, char* str, size_t size, voi
         logger.debug("out: ", buf);
     return 0;
 }
+struct ProgressData { std::string name; QObject* eventReceiver; };
+int progress_function(ProgressData data, double dtotal, double dnow, double /*utotal*/, double /*unow*/) {
+    if (data.eventReceiver)
+        QCoreApplication::postEvent(data.eventReceiver, new LobbyInterface::DownloadEvent(data.name, "progress:" +
+            std::to_string(dtotal < 0.001 ? 0 : std::lround(dnow/dtotal*100))));
+    return 0;
+}
 size_t static write_data(void* buf, size_t size, size_t mult, void* file) {
     ((std::ostream*)file)->write((const char*)buf, size * mult);
     return size * mult;
 }
-bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
+bool LobbyInterface::downloadFile(QString qname, QString qurl, QString qtarget, bool checkIfModified, QObject* eventReceiver) {
     auto url = qurl.toStdString();
+    auto name = qname.toStdString();
     fs::path target = qtarget.toStdWString();
     logger.debug("downloadFile(): ", url, " => ", target);
     auto handle = curl_easy_init();
     curl_slist* hlist = NULL;
 
-    if (fs::exists(target)) {
+    if (checkIfModified && fs::exists(target)) {
         auto lastM_ = fs::last_write_time(target);
         auto lastM = std::gmtime(&lastM_);
         std::ostringstream ss;
@@ -329,24 +349,31 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
         curl_easy_setopt(handle, CURLOPT_HTTPHEADER, hlist);
     }
 
-    auto tempFile = fs::temp_directory_path();
-    tempFile /= "weblobby_dl";
+    auto tempFile = fs::temp_directory_path() / fs::unique_path();
     uofstream fo(tempFile, std::ios::binary);
     if (fo.fail()) {
         logger.error("downloadFile(): can't open file: ", tempFile);
         return false;
     }
 
+    ProgressData progressData { name, eventReceiver };
     /*curl_easy_setopt(handle, CURLOPT_VERBOSE, 1);
     curl_easy_setopt(handle, CURLOPT_DEBUGFUNCTION, curl_debug);
     curl_easy_setopt(handle, CURLOPT_DEBUGDATA, &logger);*/
     curl_easy_setopt(handle, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1);
+    curl_easy_setopt(handle, CURLOPT_FAILONERROR, 1);
     curl_easy_setopt(handle, CURLOPT_WRITEDATA, &fo);
     curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_data);
+    curl_easy_setopt(handle, CURLOPT_NOPROGRESS, 0);
+    curl_easy_setopt(handle, CURLOPT_PROGRESSDATA, &progressData);
+    curl_easy_setopt(handle, CURLOPT_PROGRESSFUNCTION, progress_function);
 
     CURLcode err;
     if ((err = curl_easy_perform(handle)) != 0) {
         logger.error("downloadFile(): can't download file: ", url, " => ", target, ": ", curl_easy_strerror(err));
+        if (eventReceiver)
+            QCoreApplication::postEvent(eventReceiver, new DownloadEvent(name, std::string("error:") + curl_easy_strerror(err)));
         return false;
     }
     if (hlist)
@@ -360,10 +387,24 @@ bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
                 chmod(target.c_str(), S_IRWXU | S_IRWXG | S_IROTH);
         #endif
         logger.debug("downloadFile(): finished.");
-    } else {
+    } else if (checkIfModified) {
         logger.debug("downloadFile(): not modified, using the cached version");
+    } else {
+        logger.warning("downloadFile(): no data received");
     }
+    if (eventReceiver)
+        QCoreApplication::postEvent(eventReceiver, new DownloadEvent(name, "done"));
     return true;
+}
+
+bool LobbyInterface::downloadFile(QString qurl, QString qtarget) {
+    return downloadFile("", qurl, qtarget, true, NULL);
+}
+
+void LobbyInterface::startDownload(QString name, QString url, QString file, bool checkIfModified) {
+    downloadThreads.push_back(boost::thread([=]{
+        downloadFile(name, url, file, checkIfModified, this);
+    }));
 }
 
 QObject* LobbyInterface::getUnitsync(QString qpath) {
