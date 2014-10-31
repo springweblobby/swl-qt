@@ -48,7 +48,7 @@ public:
         TerminateEvent(std::string cmd, int retCode) : QEvent(QEvent::Type(TypeId)), cmd(cmd), returnCode(retCode) {}
         std::string cmd;
         int returnCode;
-        static const int TypeId = QEvent::User + 4; // even more magic numbers
+        static const int TypeId = QEvent::User + 4; // QEvent::registerEventType() is evil black magic!
     };
 private:
     void runService();
@@ -75,7 +75,13 @@ public:
     struct ReadEvent : QEvent {
         ReadEvent(std::string msg) : QEvent(QEvent::Type(TypeId)), msg(msg) {}
         std::string msg;
-        static const int TypeId = QEvent::User + 1;
+        static const int TypeId = QEvent::User + 1; // watch ma, no hands! magic! (hides saw)
+    };
+    // This event represents a socket error. The socket is always closed before this event is posted.
+    struct ErrorEvent : QEvent {
+        ErrorEvent(std::string reason) : QEvent(QEvent::Type(TypeId)), reason(reason) {}
+        std::string reason;
+        static const int TypeId = QEvent::User + 7; // lucky magic number
     };
 private:
     void runService();

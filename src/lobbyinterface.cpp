@@ -198,6 +198,10 @@ bool LobbyInterface::event(QEvent* evt) {
         auto readEvt = dynamic_cast<NetworkHandler::ReadEvent&>(*evt);
         evalJs("on_socket_get('" + escapeJs(readEvt.msg) + "')");
         return true;
+    } else if (evt->type() == NetworkHandler::ErrorEvent::TypeId) {
+        auto errorEvt = dynamic_cast<NetworkHandler::ErrorEvent&>(*evt);
+        evalJs("on_socket_error('" + escapeJs(errorEvt.reason) + "')");
+        return true;
     } else if (evt->type() == Logger::LogEvent::TypeId) {
         auto logEvt = dynamic_cast<Logger::LogEvent&>(*evt);
         if(logEvt.lev == Logger::level::error)

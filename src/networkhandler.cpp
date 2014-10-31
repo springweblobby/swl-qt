@@ -5,20 +5,28 @@ namespace asio = boost::asio;
 namespace ip = asio::ip;
 
 void NetworkHandler::connect(std::string host, unsigned int port) {
-    logger.info("Connecting to uberserver on ", host, ":", port);
+    logger.info("Connecting to lobby server on ", host, ":", port);
     resolver.async_resolve({ host, std::to_string(port) },
         [=](const boost::system::error_code& ec, ip::udp::resolver::iterator it){
 
         if(ec) {
-            logger.error("Could not resolve host: ", ec.message());
+            socket.close();
+            std::string msg = "Could not resolve host: " + ec.message();
+            logger.error(msg);
+            QCoreApplication::postEvent(eventReceiver, new ErrorEvent(msg));
             return;
         }
         socket.async_connect({ it->endpoint().address(), it->endpoint().port() },
             [=](const boost::system::error_code& ec){
 
-            if(ec)
-                logger.error("Could not connect to lobby server: ", ec.message());
-            asio::async_read_until(socket, readBuf, '\n', boost::bind(&NetworkHandler::onRead, this, _1, _2));
+            if(ec) {
+                socket.close();
+                std::string msg = "Could not connect to lobby server: " + ec.message();
+                logger.error(msg);
+                QCoreApplication::postEvent(eventReceiver, new ErrorEvent(msg));
+            } else {
+                asio::async_read_until(socket, readBuf, '\n', boost::bind(&NetworkHandler::onRead, this, _1, _2));
+            }
         });
     });
 }
@@ -32,7 +40,7 @@ void NetworkHandler::onRead(const boost::system::error_code& ec, std::size_t /* 
         QCoreApplication::postEvent(eventReceiver, new ReadEvent(msg));
         asio::async_read_until(socket, readBuf, '\n', boost::bind(&NetworkHandler::onRead, this, _1, _2));
     } else if(ec.value() != asio::error::basic_errors::operation_aborted) {
-        logger.warning("Could not read data from uberserver: ", ec.message());
+        logger.warning("Could not read data from lobby server: ", ec.message());
     }
 }
 
@@ -41,7 +49,7 @@ void NetworkHandler::send(std::string msg) {
         try {
             asio::write(socket, boost::asio::buffer(msg));
         } catch(boost::system::system_error e) {
-            logger.warning("Could not send data to uberserver: ", e.what());
+            logger.warning("Could not send data to lobby server: ", e.what());
         }
     });
 }
@@ -49,7 +57,7 @@ void NetworkHandler::send(std::string msg) {
 void NetworkHandler::disconnect() {
     service.post([=]{
         if(socket.is_open()) {
-            logger.info("Disconnecting from uberserver.");
+            logger.info("Disconnecting from lobby server.");
             socket.close();
         }
     });
