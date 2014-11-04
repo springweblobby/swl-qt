@@ -65,7 +65,7 @@ putTemplate funcs "public_methods_definitions_async" = concat $ flip map (onlyKn
      "    queueCond.notify_all();",
      "}"]
 
--- Methods for js wrapper.
+-- Methods for js wrapper (dojo).
 putTemplate funcs "js_wrapper_methods" = concat $ flip map (onlyKnown funcs) $ \(CFunc ret name args) ->
     ["" <> toLowerCase name <> ": function(" <> commaList (map (\(Arg name _) -> name) args) <> ")",
      "{",
@@ -75,6 +75,14 @@ putTemplate funcs "js_wrapper_methods" = concat $ flip map (onlyKnown funcs) $ \
      "\tunsub.obj = topic.subscribe('Lobby/unitsync/' + __id, lang.hitch(this, lang.partial(this.resolveDeferred, deferred, unsub)));",
      "\tthis.jsobject." <> toLowerCase name <> "(" <> commaList ("__id" : map (\(Arg name _) -> name) args) <> ");",
      "\treturn deferred.promise;",
+	 "},"]
+
+-- Methods for js wrapper (reactjs).
+putTemplate funcs "js_wrapper_methods_reactjs" = concat $ flip map (onlyKnown funcs) $ \(CFunc ret name args) ->
+    [toLowerCase name <> ": function(" <> commaList (map (\(Arg name _) -> name) args) <> ", done){",
+     "\tvar id = _.uniqueId();",
+     "\tunitsync." <> toLowerCase name <> "(" <> commaList ("id" : map (\(Arg name _) -> name) args) <> ");",
+     "\tresult(id, cast(done));",
 	 "},"]
 
 
