@@ -79,7 +79,7 @@ putTemplate funcs "js_wrapper_methods" = concat $ flip map (onlyKnown funcs) $ \
 
 -- Methods for js wrapper (reactjs).
 putTemplate funcs "js_wrapper_methods_reactjs" = concat $ flip map (onlyKnown funcs) $ \(CFunc ret name args) ->
-    [toLowerCase name <> ": function(" <> commaList (map (\(Arg name _) -> name) args) <> ", done){",
+    [toLowerCase name <> ": function(" <> commaList ((map (\(Arg name _) -> name) args) ++ ["done"]) <> "){",
      "\tvar id = _.uniqueId();",
      "\tunitsync." <> toLowerCase name <> "(" <> commaList ("id" : map (\(Arg name _) -> name) args) <> ");",
      "\tresult(id, cast(done));",
