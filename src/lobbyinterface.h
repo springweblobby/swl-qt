@@ -128,7 +128,7 @@ public slots:
     QObject* getUnitsyncAsync(QString path);
 
     void killCommand(QString cmdName);
-    void runCommand(QString cmdName, QStringList args);
+    bool runCommand(QString cmdName, QStringList args);
 
     void connect(QString host, unsigned int port);
     void disconnect();

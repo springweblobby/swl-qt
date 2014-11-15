@@ -459,7 +459,7 @@ void LobbyInterface::killCommand(QString qcmdName)
     }
 }
 
-void LobbyInterface::runCommand(QString qcmdName, QStringList cmd) {
+bool LobbyInterface::runCommand(QString qcmdName, QStringList cmd) {
     auto cmdName = qcmdName.toStdString();
     if(!processes.count(cmdName)) {
         std::vector<std::wstring> args;
@@ -472,8 +472,11 @@ void LobbyInterface::runCommand(QString qcmdName, QStringList cmd) {
         } catch(boost::system::system_error e) {
             logger.error("Cannot start command: ", cmdName, ": ", e.what());
             processes.erase(it);
+            return false;
         }
+        return true;
     }
+    return false;
 }
 
 void LobbyInterface::createUiKeys(QString qpath) {
