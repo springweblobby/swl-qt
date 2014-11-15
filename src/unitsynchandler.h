@@ -9,6 +9,7 @@
 #include <boost/filesystem.hpp>
 #include <QObject>
 
+class MapInfo;
 class UnitsyncHandler : public QObject {
     Q_OBJECT
 public:
