@@ -96,6 +96,7 @@ void ProcessRunner::run() {
             "QT_PLUGIN_PATH",
             "GST_PLUGIN_PATH",
             "OMP_THREAD_LIMIT",
+            "OMP_WAIT_POLICY",
 
             // Windows vars
             "ALLUSERSPROFILE",
@@ -134,8 +135,6 @@ void ProcessRunner::run() {
         if((ptr = std::getenv(i)))
             env.push_back(i + std::string("=") + std::string(ptr));
     }
-    // This allegedly solves some hanging issues.
-    env.push_back("OMP_WAIT_POLICY=ACTIVE");
 
     #ifdef BOOST_WINDOWS_API
         std::vector<std::wstring> wenv;
