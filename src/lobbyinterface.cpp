@@ -127,6 +127,7 @@ void LobbyInterface::init() {
 
     try {
         const fs::path weblobbyDir = springHome / "weblobby";
+        fs::create_directories(springHome / "engine");
         fs::create_directories(weblobbyDir / "engine");
         fs::create_directories(weblobbyDir / "pr-downloader");
         fs::create_directories(weblobbyDir / "logs");
