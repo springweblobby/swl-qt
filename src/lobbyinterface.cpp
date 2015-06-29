@@ -287,7 +287,7 @@ QString LobbyInterface::listFilesPriv(QString qpath, bool dirs) {
 QString LobbyInterface::readFileLess(QString qpath, unsigned int lines) {
     // TODO: deque? Just read the file in the reverse order, geez.
     fs::path path = qpath.toStdWString();
-    uifstream in(path);
+    uifstream in(path, std::ios::in | std::ios::binary);
     if (!in) {
         logger.warning("readFileLess(): Could not open ", path);
         return "";
