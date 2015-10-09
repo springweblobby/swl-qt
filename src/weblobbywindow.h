@@ -5,6 +5,10 @@
 #include <QMainWindow>
 #include <QtWidgets>
 #include <QtWebKitWidgets>
+#if defined Q_OS_MAC
+    #include <QtWebKit>
+    #include <QWebPage>
+#endif
 
 class QWebView;
 

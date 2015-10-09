@@ -57,7 +57,13 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
         GetModuleFileName(NULL, buf, 1024);
         executablePath = fs::path(buf).parent_path();
     #elif defined Q_OS_MAC
-        #error TODO: _NSGetExecutablePath()
+    char buf[1024];
+                if (readlink("/proc/self/exe", buf, 1024) >= 0) {
+                    executablePath = fs::path(buf).parent_path();
+                } else {
+                    getcwd(buf, 1024);
+                    executablePath = fs::path(buf);
+                }
     #endif
 }
 
