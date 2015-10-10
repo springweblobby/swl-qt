@@ -44,7 +44,7 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
     if (args.contains("-debug"))
         logger.setDebug(true);
 
-    #if defined Q_OS_LINUX
+    #if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
         char buf[1024];
         if (readlink("/proc/self/exe", buf, 1024) >= 0) {
             executablePath = fs::path(buf).parent_path();
@@ -56,14 +56,6 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
         wchar_t buf[1024];
         GetModuleFileName(NULL, buf, 1024);
         executablePath = fs::path(buf).parent_path();
-    #elif defined Q_OS_MAC
-    char buf[1024];
-                if (readlink("/proc/self/exe", buf, 1024) >= 0) {
-                    executablePath = fs::path(buf).parent_path();
-                } else {
-                    getcwd(buf, 1024);
-                    executablePath = fs::path(buf);
-                }
     #endif
 }
 
