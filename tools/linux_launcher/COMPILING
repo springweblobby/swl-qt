@@ -1,16 +1,30 @@
-Compile Qt:
-configure -opensource -confirm-license -prefix /home/user/build -no-rpath -qt-xcb -system-proxies -nomake examples -fontconfig
-
 Use the cursor patch on the qt source tree. (Although it's possibly not needed
 with newer XCursor versions - need to check)
 
 It's important not to have gstreamer headers so that qwebkit compiles without
 gstreamer support. Otherwise it will bring in unnecessary gst libs.
 
+QWebKit needs ruby, gperf, bison and flex. If it fails to compile together with
+the rest of Qt you can run make install and then run cd qtwebkit && ~/build/bin/qmake .
+(delete .qmake.cache to make qmake reconfigure from scratch)
+
+Install dev packages (list given for Mint 13):
+sudo apt-get install libbz2-dev libX11-dev libasound2-dev libc-dev-bin libc6-dev libcurl4-gnutls-dev libdbus-glib-1-dev libfontconfig1-dev libgmp-dev libicu-dev libmpc-dev libmpfr-dev libmpg123-dev libpthread-stubs0-dev libx11-xcb-dev libxau-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-randr0-dev libxcb-render-util0-dev libxcb-shape0-dev libxcb-shm0-dev libxcb-sync0-dev libxcb-xfixes0-dev libxcb1-dev libxcursor-dev libxdmcp-dev libxkbcommon-dev libxrender-dev libxslt1-dev linux-libc-dev manpages-dev python-dbus-dev x11proto-core-dev x11proto-input-dev x11proto-kb-dev xorg-dev xtrans-dev
+
+Compile Qt:
+./configure -opensource -confirm-license -prefix /home/user/build -no-rpath -no-opengl -qt-xcb -system-proxies -nomake examples -fontconfig
+make && make install
+
+Compile boost >=1.5:
+./bootstrap.sh --prefix=/home/user/build --with-libraries=chrono,filesystem,iostreams,system,thread
+./b2 && ./b2 install
+
+Compile swl:
+$ git clone https://github.com/springweblobby/swl-qt
+$ cd swl-qt && mkdir build && cd build
+$ ~/build/bin/qmake .. && make
+$ LD_LIBRARY_PATH=~/build/lib ../tools/linux_launcher/make_zip.sh /home/user/build/plugins
+
 When collecting libs be sure to include pr-downloader as it depends on
-libcurl.so.4 and not libcurl-gnutls.so.4, the former is often not present.
-
-For reference: the list of explicitly installed -dev packages on Mint 13
-(aptitude search '~i!~M'):
-
-libX11-dev libasound2-dev libboost-date-time1.46-dev libboost-filesystem1.46-dev libboost-iostreams1.46-dev libboost-math1.46-dev libboost-random1.46-dev libboost-regex1.46-dev libboost-signals1.46-dev libboost-system1.46-dev libboost-test1.46-dev libboost-thread1.46-dev libboost1.46-dev libc-dev-bin libc6-dev libcurl4-gnutls-dev libdbus-glib-1-dev libfontconfig1-dev libgmp-dev libicu-dev libmpc-dev libmpfr-dev libmpg123-dev libpthread-stubs0-dev libx11-xcb-dev libxau-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-randr0-dev libxcb-render-util0-dev libxcb-shape0-dev libxcb-shm0-dev libxcb-sync0-dev libxcb-xfixes0-dev libxcb1-dev libxcursor-dev libxdmcp-dev libxkbcommon-dev libxrender-dev libxslt1-dev linux-libc-dev manpages-dev python-dbus-dev x11proto-core-dev x11proto-input-dev x11proto-kb-dev xorg-dev xtrans-dev
+libcurl.so.4 and not libcurl-gnutls.so.4, the former is often not present
+(make_zip.sh does that automatically).
