@@ -14,11 +14,6 @@ MyPage::MyPage(QObject* parent) : QWebPage(parent), lobbyInterface(parent, mainF
     settings->setAttribute(QWebSettings::LocalStorageEnabled, true);
     settings->setAttribute(QWebSettings::LocalContentCanAccessFileUrls, true);
     settings->setAttribute(QWebSettings::LocalContentCanAccessRemoteUrls, true);
-    QWebSettings::setMaximumPagesInCache(0);
-    // This hack effectively disables the cache without causing errors in the
-    // log like setObjectCacheCapacities(0, 0, 0) would.
-    QWebSettings::setObjectCacheCapacities(1, 1, 1);
-    QWebSettings::clearMemoryCaches();
 }
 
 void MyPage::javaScriptConsoleMessage(const QString& message, int lineNumber,
