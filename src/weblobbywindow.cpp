@@ -69,14 +69,9 @@ bool F5Filter::eventFilter(QObject* obj, QEvent* evt) {
     if (evt->type() == QEvent::KeyPress) {
         auto keyEvt = static_cast<QKeyEvent&>(*evt);
         if (keyEvt.key() == Qt::Key_F5) {
-            auto view = dynamic_cast<QWebView*>(obj);
-            QUrl url = view->page()->mainFrame()->url();
-            view->setPage(new MyPage(view));
-            // Give WebKit threads some time to catch up, prevents random hangs.
-            QThread::msleep(500);
-            view->load(url);
+            dynamic_cast<QWebView&>(*obj).triggerPageAction(QWebPage::ReloadAndBypassCache);
             return true;
-		} else {
+        } else {
             return QObject::eventFilter(obj, evt);
         }
     } else {
