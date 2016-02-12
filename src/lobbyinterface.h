@@ -3,17 +3,6 @@
 
 #include "logger.h"
 #include "ufstream.h"
-#include "unitsynchandler.h"
-#include "unitsynchandler_t.h"
-#include <QObject>
-#include <QEvent>
-#include <QStringList>
-#ifdef Q_OS_LINUX
-    #include <alsa/asoundlib.h>
-    #include <mpg123.h>
-#else
-    #include <QMediaPlayer>
-#endif
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 #include <boost/process.hpp>
@@ -21,6 +10,7 @@
 #include <functional>
 #include <map>
 
+// XXX
 class QWebFrame;
 
 class ProcessRunner {
@@ -96,8 +86,7 @@ private:
     Logger& logger;
 };
 
-class LobbyInterface : public QObject {
-    Q_OBJECT
+class LobbyInterface {
 public:
     explicit LobbyInterface(QObject *parent, QWebFrame *frame);
     ~LobbyInterface();
@@ -109,11 +98,8 @@ public:
         std::string name, msg;
         static const int TypeId = QEvent::User + 6; // grep for 'magic' to check for conflicts
     };
-signals:
-public slots:
-    //add public functions here
 
-    void init();
+    /*void init();
     void jsMessage(std::string source, int line, std::string msg);
 
     QString listDirs(QString path);
@@ -170,16 +156,16 @@ private:
     std::map<std::string, ProcessRunner> processes;
     // This doesn't ever get cleared for simplicity on the presumption that
     // there are never enough downloads for that to matter.
-    std::vector<boost::thread> downloadThreads;
+    std::vector<boost::thread> downloadThreads;*/
 };
 
 // utf-8 string to utf-16 (on windows).
-inline std::wstring toStdWString(const std::string& str) {
+/*inline std::wstring toStdWString(const std::string& str) {
     return QString::fromStdString(str).toStdWString();
 }
 // the opposite
 inline std::string toStdString(const std::wstring& str) {
     return QString::fromStdWString(str).toStdString();
-}
+}*/
 
 #endif // LOBBYINTERFACE_H

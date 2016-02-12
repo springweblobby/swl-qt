@@ -2,16 +2,6 @@
 // On mingw lobbyinterface.h must be included first or you'll get compilation errors.
 #include "lobbyinterface.h"
 
-#include <QMainWindow>
-#include <QtWidgets>
-#include <QtWebKitWidgets>
-#if defined Q_OS_MAC
-    #include <QtWebKit>
-    #include <QWebPage>
-#endif
-
-class QWebView;
-
 class MyPage : public QWebPage {
 public:
     MyPage(QObject* parent);

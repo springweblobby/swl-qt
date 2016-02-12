@@ -1,11 +1,5 @@
 #include "lobbyinterface.h"
 #include "logger.h"
-#include <QCoreApplication>
-#include <QSysInfo>
-#include <QWebFrame>
-#include <QWebPage>
-#include <QNetworkInterface>
-#include <QStandardPaths>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/crc.hpp>
@@ -24,6 +18,7 @@
 #endif
 namespace fs = boost::filesystem;
 
+#if 0
 LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
         QObject(parent), springHome(""), debugNetwork(false), debugCommands(false),
         network(this, logger), frame(frame) {
@@ -676,3 +671,4 @@ unsigned int LobbyInterface::getUserID() {
     }
     return 0;
 }
+#endif

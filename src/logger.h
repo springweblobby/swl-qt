@@ -5,7 +5,6 @@
 // Forgive me gajop for using variadic templates, I couldn't help myself, the
 // evil spirits of lookshinynewthing took over me and made me write this code.
 
-#include <QCoreApplication>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -16,6 +15,10 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include "ufstream.h"
+
+// XXX
+class QObject;
+class QEvent { public: enum Type { User }; QEvent(Type id) {}; };
 
 class Logger {
 public:
@@ -89,7 +92,7 @@ private:
         if (fileStream.good())
             fileStream << std::endl;
         if (eventReceiver)
-            QCoreApplication::postEvent(eventReceiver, new LogEvent(lev, msgString.str()));
+            ;// XXX QCoreApplication::postEvent(eventReceiver, new LogEvent(lev, msgString.str()));
     }
     void put(std::ostringstream&) {}
     template<typename T, typename... Args>

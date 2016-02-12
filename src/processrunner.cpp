@@ -1,7 +1,6 @@
 #include "lobbyinterface.h"
 #include <cstdlib>
 #include <exception>
-#include <QCoreApplication>
 #include <boost/process/mitigate.hpp>
 #include <boost/chrono/include.hpp>
 #ifdef BOOST_WINDOWS_API
@@ -144,7 +143,7 @@ void ProcessRunner::run() {
     #ifdef BOOST_POSIX_API
         std::vector<std::string> sargs;
         for(auto i : args)
-            sargs.push_back(toStdString(i));
+            ;// XXX sargs.push_back(toStdString(i));
     #endif
 
     try {
@@ -218,7 +217,7 @@ void ProcessRunner::run() {
             std::istream is(stdoutBuf.get());
             std::string msg;
             std::getline(is, msg);
-            QCoreApplication::postEvent(eventReceiver, new ReadEvent(cmd, msg));
+            // XXX QCoreApplication::postEvent(eventReceiver, new ReadEvent(cmd, msg));
             asio::async_read_until(*stdout_pend, *stdoutBuf, &matchNewline, *onRead);
         }
     };
@@ -227,7 +226,7 @@ void ProcessRunner::run() {
             std::istream is(stderrBuf.get());
             std::string msg;
             std::getline(is, msg);
-            QCoreApplication::postEvent(eventReceiver, new ReadEvent(cmd, msg));
+            // XXX QCoreApplication::postEvent(eventReceiver, new ReadEvent(cmd, msg));
             asio::async_read_until(*stderr_pend, *stderrBuf, &matchNewline, *onErrRead);
         }
     };
@@ -263,5 +262,5 @@ void ProcessRunner::runService() {
     service.run();
     if(waitForExitThread.joinable())
         waitForExitThread.join();
-    QCoreApplication::postEvent(eventReceiver, new TerminateEvent(cmd, returnCode));
+    // XXX QCoreApplication::postEvent(eventReceiver, new TerminateEvent(cmd, returnCode));
 }

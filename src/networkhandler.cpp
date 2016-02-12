@@ -1,5 +1,4 @@
 #include "lobbyinterface.h"
-#include <QCoreApplication>
 
 namespace asio = boost::asio;
 namespace ip = asio::ip;
@@ -13,7 +12,7 @@ void NetworkHandler::connect(std::string host, unsigned int port) {
             socket.close();
             std::string msg = "Could not resolve host: " + ec.message();
             logger.error(msg);
-            QCoreApplication::postEvent(eventReceiver, new ErrorEvent(msg));
+            // XXX QCoreApplication::postEvent(eventReceiver, new ErrorEvent(msg));
             return;
         }
         socket.async_connect({ it->endpoint().address(), it->endpoint().port() },
@@ -23,7 +22,7 @@ void NetworkHandler::connect(std::string host, unsigned int port) {
                 socket.close();
                 std::string msg = "Could not connect to lobby server: " + ec.message();
                 logger.error(msg);
-                QCoreApplication::postEvent(eventReceiver, new ErrorEvent(msg));
+                // XXX QCoreApplication::postEvent(eventReceiver, new ErrorEvent(msg));
             } else {
                 asio::async_read_until(socket, readBuf, '\n', boost::bind(&NetworkHandler::onRead, this, _1, _2));
             }
@@ -37,7 +36,7 @@ void NetworkHandler::onRead(const boost::system::error_code& ec, std::size_t /* 
         std::istream is(&readBuf);
         std::string msg;
         std::getline(is, msg);
-        QCoreApplication::postEvent(eventReceiver, new ReadEvent(msg));
+        // XXX QCoreApplication::postEvent(eventReceiver, new ReadEvent(msg));
         asio::async_read_until(socket, readBuf, '\n', boost::bind(&NetworkHandler::onRead, this, _1, _2));
     } else if(ec.value() != asio::error::basic_errors::operation_aborted) {
         logger.warning("Could not read data from lobby server: ", ec.message());
