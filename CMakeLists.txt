@@ -13,6 +13,7 @@ add_executable(
     src/main.cpp
     src/app.h
     src/app.cpp
+    src/v8context.cpp
     src/lobbyinterface.cpp
     src/networkhandler.cpp
     src/processrunner.cpp
@@ -29,6 +30,12 @@ target_link_libraries(weblobby ${Boost_LIBRARIES})
 find_package(CURL 7 REQUIRED)
 include_directories(${CURL_INCLUDE_DIRS})
 target_link_libraries(weblobby ${CURL_LIBRARIES})
+
+if (UNIX)
+    find_package(X11 REQUIRED)
+    include_directories(${X11_X11_INCLUDE_PATH})
+    target_link_libraries(weblobby ${X11_X11_LIB})
+endif ()
 
 set(cef_version 3.2454.1344.g2782fb8)
 

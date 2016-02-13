@@ -1,10 +1,10 @@
 #include <cef_client.h>
 #include "app.h"
-#include <iostream>
 
 class Client :
     public CefClient,
     public CefLoadHandler,
+    public CefLifeSpanHandler,
     public CefKeyboardHandler {
 public:
     CefRefPtr<CefKeyboardHandler> GetKeyboardHandler() override {
@@ -13,7 +13,20 @@ public:
     CefRefPtr<CefLoadHandler> GetLoadHandler() override {
         return this;
     }
+    CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override {
+        return this;
+    }
 
+    void OnAfterCreated(CefRefPtr<CefBrowser> browser) override {
+        if (!mainBrowser)
+            mainBrowser = browser;
+    }
+    void OnBeforeClose(CefRefPtr<CefBrowser> browser) override {
+        if (browser->IsSame(mainBrowser)) {
+            mainBrowser = NULL;
+            CefQuitMessageLoop();
+        }
+    }
     bool OnPreKeyEvent(CefRefPtr<CefBrowser> browser, const CefKeyEvent& evt,
             CefEventHandle, bool*) override {
         if (evt.windows_key_code == 0x74 && evt.type == KEYEVENT_RAWKEYDOWN) { // F5
@@ -32,6 +45,7 @@ public:
     }
     // TODO CefResourceHander::OnBeforeBrowse (but OnBeforeNavigation probs better)
 private:
+    CefRefPtr<CefBrowser> mainBrowser;
     IMPLEMENT_REFCOUNTING(Client)
 };
 
@@ -46,5 +60,5 @@ void App::OnContextInitialized() {
     auto url = CefCommandLine::GetGlobalCommandLine()->GetSwitchValue("url");
     if (url.empty())
         url = "weblobby://";
-    mainBrowser = CefBrowserHost::CreateBrowserSync(info, new Client, url, settings, NULL);
+    CefBrowserHost::CreateBrowser(info, new Client, url, settings, NULL);
 }
