@@ -1,19 +1,24 @@
 #include <curl/curl.h>
-#include <cef_app.h>
+#include "app.h"
 
-class App : public CefApp
-{
-public:
-    App() {};
-private:
-    IMPLEMENT_REFCOUNTING(App)
-};
-
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     curl_global_init(CURL_GLOBAL_ALL);
+
+    CefRefPtr<App> app(new App);
     CefMainArgs args(argc, argv);
-    CefExecuteProcess(args, new App, NULL);
+
+    int exitCode = CefExecuteProcess(args, app.get(), NULL);
+    if (exitCode > 0)
+        return exitCode;
+
+    CefSettings settings;
+    settings.no_sandbox = 1;
+    CefString(&settings.product_version).FromASCII("weblobby");
+
+    CefInitialize(args, settings, app.get(), NULL);
+    CefRunMessageLoop();
+    CefShutdown();
+
     return 0;
 
     /*WebLobbyWindow webLobbyWindow;

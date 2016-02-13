@@ -1,0 +1,50 @@
+#include <cef_client.h>
+#include "app.h"
+#include <iostream>
+
+class Client :
+    public CefClient,
+    public CefLoadHandler,
+    public CefKeyboardHandler {
+public:
+    CefRefPtr<CefKeyboardHandler> GetKeyboardHandler() override {
+        return this;
+    }
+    CefRefPtr<CefLoadHandler> GetLoadHandler() override {
+        return this;
+    }
+
+    bool OnPreKeyEvent(CefRefPtr<CefBrowser> browser, const CefKeyEvent& evt,
+            CefEventHandle, bool*) override {
+        if (evt.windows_key_code == 0x74 && evt.type == KEYEVENT_RAWKEYDOWN) { // F5
+            browser->ReloadIgnoreCache();
+            return true;
+        }
+        return false;
+    }
+    void OnLoadError(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame> frame, ErrorCode errCode,
+            const CefString& errText, const CefString& url) override {
+        if (frame->IsMain()) {
+            std::string str = "<h1>Error</h1><h2>Failed loading " + url.ToString() + "</h2><h2>" +
+                errText.ToString() + "</h2><h3>Error code " + std::to_string(errCode) + "</h3>";
+            frame->LoadString(str, "about:error");
+        }
+    }
+    // TODO CefResourceHander::OnBeforeBrowse (but OnBeforeNavigation probs better)
+private:
+    IMPLEMENT_REFCOUNTING(Client)
+};
+
+void App::OnContextInitialized() {
+    CefWindowInfo info;
+#ifdef OS_WIN
+    info.SetAsPopup(NULL, "weblobby");
+#endif
+    
+    CefBrowserSettings settings;
+
+    auto url = CefCommandLine::GetGlobalCommandLine()->GetSwitchValue("url");
+    if (url.empty())
+        url = "weblobby://";
+    mainBrowser = CefBrowserHost::CreateBrowserSync(info, new Client, url, settings, NULL);
+}

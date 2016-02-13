@@ -11,6 +11,8 @@ add_executable(
     weblobby
 
     src/main.cpp
+    src/app.h
+    src/app.cpp
     src/lobbyinterface.cpp
     src/networkhandler.cpp
     src/processrunner.cpp
@@ -56,6 +58,9 @@ if (EXISTS ${cef_path})
     elseif (UNIX)
         target_link_libraries(weblobby ${cef_path}/Release/libcef.so)
     endif ()
+    MESSAGE(STATUS "Copying resource files")
+    file(GLOB cef_resources ${cef_path}/Resources/* ${cef_path}/Release/*.bin)
+    file(COPY ${cef_resources} DESTINATION .)
 else ()
     message(SEND_ERROR "Please download CEF version ${cef_version} for ${cef_arch} from http://cefbuilds.com and extract into the source directory.")
 endif ()
