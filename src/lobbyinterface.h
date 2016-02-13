@@ -9,6 +9,7 @@
 #include <boost/iostreams/device/file_descriptor.hpp>
 #include <functional>
 #include <map>
+#include <cef_v8.h>
 
 // XXX
 class QWebFrame;
@@ -88,7 +89,7 @@ private:
 
 class LobbyInterface {
 public:
-    explicit LobbyInterface(QObject *parent, QWebFrame *frame);
+    LobbyInterface(CefRefPtr<CefV8Context> context);
     ~LobbyInterface();
     bool event(QEvent* evt);
 
@@ -99,73 +100,65 @@ public:
         static const int TypeId = QEvent::User + 6; // grep for 'magic' to check for conflicts
     };
 
-    /*void init();
-    void jsMessage(std::string source, int line, std::string msg);
+    void init();
+    std::string listDirs(std::string path);
+    std::string listFiles(std::string path);
+    std::string readFileLess(std::string path, unsigned int lines);
+    void writeToFile(std::string path, std::string line);
+    void createScript(std::string path, std::string script);
+    void createUiKeys(std::string path);
+    void deleteSpringSettings(std::string path);
 
-    QString listDirs(QString path);
-    QString listFiles(QString path);
-    QString readFileLess(QString path, unsigned int lines);
-    void writeToFile(QString path, QString line);
-    void createScript(QString path, QString script);
-    void createUiKeys(QString path);
-    void deleteSpringSettings(QString path);
+    //QObject* getUnitsync(std::string path);
+    //QObject* getUnitsyncAsync(std::string path);
 
-    QObject* getUnitsync(QString path);
-    QObject* getUnitsyncAsync(QString path);
+    void killCommand(std::string cmdName);
+    //bool runCommand(std::string cmdName, std::stringList args);
 
-    void killCommand(QString cmdName);
-    bool runCommand(QString cmdName, QStringList args);
-
-    void connect(QString host, unsigned int port);
+    void connect(std::string host, unsigned int port);
     void disconnect();
-    void send(QString msg);
-    bool downloadFile(QString url, QString target);
-    void startDownload(QString name, QString url, QString file, bool checkIfModified);
+    void send(std::string msg);
+    bool downloadFile(std::string url, std::string target);
+    void startDownload(std::string name, std::string url, std::string file, bool checkIfModified);
     unsigned int getUserID();
-    int sendSomePacket(QString host, unsigned int port, QString msg);
+    int sendSomePacket(std::string host, unsigned int port, std::string msg);
 
-    void playSound(QString url);
-
-    QString getSpringHome();
-    QString readSpringHomeSetting();
-    void writeSpringHomeSetting(QString path);
+    std::string getSpringHome();
+    std::string readSpringHomeSetting();
+    void writeSpringHomeSetting(std::string path);
     // The version number is major * 100 + minor.
     // major is incremented with every breaking change in the API.
     int getApiVersion() { return 105; }
 private:
-    QString listFilesPriv(QString path, bool dirs);
+    /*QString listFilesPriv(QString path, bool dirs);
     void evalJs(const std::string&);
     std::string escapeJs(const std::string&);
     void move(const boost::filesystem::path& from, const boost::filesystem::path& to);
-    bool downloadFile(QString name, QString qurl, QString qtarget, bool checkIfModified, QObject* eventReceiver);
+    bool downloadFile(QString name, QString qurl, QString qtarget, bool checkIfModified, QObject* eventReceiver);*/
 
+    CefRefPtr<CefV8Context> context;
     std::string os;
     boost::filesystem::path springHome;
     boost::filesystem::path springHomeSetting;
     boost::filesystem::path executablePath;
     Logger logger;
-    bool debugNetwork, debugCommands;
     NetworkHandler network;
-    #ifndef Q_OS_LINUX
-        QMediaPlayer mediaPlayer;
-    #endif
 
-    QWebFrame* frame;
-    std::map<boost::filesystem::path, UnitsyncHandler> unitsyncs;
-    std::map<boost::filesystem::path, UnitsyncHandlerAsync> unitsyncs_async;
+    //std::map<boost::filesystem::path, UnitsyncHandler> unitsyncs;
+    //std::map<boost::filesystem::path, UnitsyncHandlerAsync> unitsyncs_async;
     std::map<std::string, ProcessRunner> processes;
     // This doesn't ever get cleared for simplicity on the presumption that
     // there are never enough downloads for that to matter.
-    std::vector<boost::thread> downloadThreads;*/
+    std::vector<boost::thread> downloadThreads;
 };
 
 // utf-8 string to utf-16 (on windows).
-/*inline std::wstring toStdWString(const std::string& str) {
-    return QString::fromStdString(str).toStdWString();
+inline std::wstring toStdWString(const std::string& str) {
+    return CefString(str).ToWString();
 }
 // the opposite
 inline std::string toStdString(const std::wstring& str) {
-    return QString::fromStdWString(str).toStdString();
-}*/
+    return CefString(str).ToString();
+}
 
 #endif // LOBBYINTERFACE_H

@@ -1,21 +1,39 @@
 #include "app.h"
+#include "lobbyinterface.h"
+#include "marshal.h"
 #include <cef_version.h>
 #include <wrapper/cef_helpers.h>
-#include <iostream>
+
+#define START_DEFINE_API() if (false) {
+#define REGISTER_FUNCTION(f) } else if (name == #f) { retval = Marshal::callNative(&LobbyInterface::f, &api, args);
+#define END_DEFINE_API() }
 
 class Handler : public CefV8Handler {
 public:
-    typedef std::function<CefRefPtr<CefV8Value>(const CefV8ValueList&)> HandlerFunc;
-    Handler(HandlerFunc func) : m_func(func) {}
+    Handler(CefRefPtr<CefV8Context> context) : api(context) {}
     bool Execute(const CefString& name, CefRefPtr<CefV8Value> object,
             const CefV8ValueList& args, CefRefPtr<CefV8Value>& retval,
             CefString& exception) override {
-        std::cout << "Called native function " << name.ToString() << std::endl;
-        retval = m_func(args);
-        return true;
+        try {
+            START_DEFINE_API()
+            REGISTER_FUNCTION(init)
+            REGISTER_FUNCTION(getApiVersion)
+            REGISTER_FUNCTION(getSpringHome)
+            REGISTER_FUNCTION(readSpringHomeSetting)
+            REGISTER_FUNCTION(writeSpringHomeSetting)
+            END_DEFINE_API()
+            return true;
+        } catch (Marshal::NotEnoughArgumentsException) {
+            exception = "Not enough arguments for function " + name.ToString();
+        } catch (Marshal::TooManyArgumentsException) {
+            exception = "Too many arguments for function " + name.ToString();
+        } catch (Marshal::TypeMismatchException) {
+            exception = "Type mismatch in function " + name.ToString();
+        }
+        return false;
     }
 private:
-    HandlerFunc m_func;
+    LobbyInterface api;
     IMPLEMENT_REFCOUNTING(Handler)
 };
 
@@ -30,13 +48,18 @@ void App::OnContextCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> fr
 
     auto global = context->GetGlobal();
     auto apiObj = CefV8Value::CreateObject(NULL);
+    CefRefPtr<Handler> handler(new Handler(context));
     apiObj->SetValue("cefVersion", CefV8Value::CreateString(CEF_VERSION),
         V8_PROPERTY_ATTRIBUTE_READONLY);
-    apiObj->SetValue("test", CefV8Value::CreateFunction("test", new Handler(
-        [](const CefV8ValueList& args){
-            std::cout << "Called test()\n";
-            return CefV8Value::CreateInt(42);
-        })), V8_PROPERTY_ATTRIBUTE_NONE);
+    for (auto i : {
+            "init",
+            "getApiVersion",
+            "getSpringHome",
+            "readSpringHomeSetting",
+            "writeSpringHomeSetting" }) {
+
+        apiObj->SetValue(i, CefV8Value::CreateFunction(i, handler), V8_PROPERTY_ATTRIBUTE_NONE);
+    }
     global->SetValue("SwlAPI", apiObj, V8_PROPERTY_ATTRIBUTE_NONE);
 
     context->Exit();

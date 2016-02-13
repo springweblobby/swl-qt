@@ -56,6 +56,10 @@ void App::OnContextInitialized() {
 #endif
     
     CefBrowserSettings settings;
+    CefString(&settings.default_encoding).FromASCII("UTF-8");
+    settings.javascript_access_clipboard = STATE_ENABLED;
+    settings.javascript_close_windows = STATE_ENABLED;
+    settings.universal_access_from_file_urls = STATE_ENABLED;
 
     auto url = CefCommandLine::GetGlobalCommandLine()->GetSwitchValue("url");
     if (url.empty())

@@ -9,37 +9,21 @@
 #include <ctime>
 #include <deque>
 #include <algorithm>
-#if defined Q_OS_LINUX || defined Q_OS_MAC
+#if defined OS_LINUX || defined OS_MACOSX
     #include <unistd.h>
     #include <sys/stat.h> // chmod()
 #endif
-#ifdef Q_OS_WIN32
+#ifdef OS_WIN
     #include <windows.h>
 #endif
 namespace fs = boost::filesystem;
 
-#if 0
-LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
-        QObject(parent), springHome(""), debugNetwork(false), debugCommands(false),
-        network(this, logger), frame(frame) {
-    logger.setEventReceiver(this);
-    auto args = QCoreApplication::arguments();
-    if (args.contains("-debug-all")) {
-        debugNetwork = debugCommands = true;
-        logger.setDebug(true);
-    }
-    if (args.contains("-debug-net")) {
-        debugNetwork = true;
-        logger.setDebug(true);
-    }
-    if (args.contains("-debug-cmd")) {
-        debugCommands = true;
-        logger.setDebug(true);
-    }
-    if (args.contains("-debug"))
-        logger.setDebug(true);
+LobbyInterface::LobbyInterface(CefRefPtr<CefV8Context> context) : context(context),
+        springHome(""), network(NULL, logger) {
+    logger.setEventReceiver(NULL);
+    logger.info("Created LobbyInterface"); // XXX
 
-    #if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
+    #if defined(OS_LINUX) || defined(OS_MACOSX)
         char buf[1024];
         if (readlink("/proc/self/exe", buf, 1024) >= 0) {
             executablePath = fs::path(buf).parent_path();
@@ -47,7 +31,7 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
             getcwd(buf, 1024);
             executablePath = fs::path(buf);
         }
-    #elif defined Q_OS_WIN32
+    #elif defined OS_WIN
         wchar_t buf[1024];
         GetModuleFileName(NULL, buf, 1024);
         executablePath = fs::path(buf).parent_path();
@@ -55,6 +39,7 @@ LobbyInterface::LobbyInterface(QObject *parent, QWebFrame *frame) :
 }
 
 LobbyInterface::~LobbyInterface() {
+    logger.info("Destroyed LobbyInterface"); // XXX
     network.disconnect();
     for (auto it = downloadThreads.begin(); it != downloadThreads.end(); it++) {
         if (it->joinable())
@@ -69,7 +54,7 @@ static void copyFile(const fs::path& from, const fs::path& to) {
     uofstream dst(to, std::ios::binary);
     dst << src.rdbuf();
 }
-void LobbyInterface::move(const fs::path& src, const fs::path& dst) {
+/*void LobbyInterface::move(const fs::path& src, const fs::path& dst) {
     if (fs::is_regular_file(src)) {
         logger.debug("Moving prepackaged file: ", src, " => ", dst);
         boost::system::error_code ec;
@@ -87,21 +72,21 @@ void LobbyInterface::move(const fs::path& src, const fs::path& dst) {
         }
         fs::remove(src);
     }
-}
+}*/
 
 void LobbyInterface::init() {
-    #if defined Q_OS_LINUX
+    #if defined OS_LINUX
         os = "Linux";
-    #elif defined Q_OS_WIN32 // Defined on 64-bit Windows too.
+    #elif defined OS_WIN
         os = "Windows";
-    #elif defined Q_OS_MAC
+    #elif defined OS_MACOSX
         os = "Mac";
     #else
         #error "Unknown target OS."
     #endif
 
     writeSpringHomeSetting(readSpringHomeSetting());
-    if (springHomeSetting.empty()) {
+    /*if (springHomeSetting.empty()) {
         if (os == "Windows") {
             // This calls SHGetFolderPath(... CSIDL_PERSONAL ...), same as what Spring uses.
             springHome = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation).toStdWString() +
@@ -116,9 +101,9 @@ void LobbyInterface::init() {
     } else {
         springHome = executablePath / springHomeSetting;
     }
-    logger.info("springHome is ", springHome);
+    logger.info("springHome is ", springHome);*/
 
-    try {
+    /*try {
         const fs::path weblobbyDir = springHome / "weblobby";
         fs::create_directories(springHome / "engine");
         fs::create_directories(weblobbyDir / "engine");
@@ -145,14 +130,14 @@ void LobbyInterface::init() {
         }
     } catch(fs::filesystem_error e) {
         logger.error("Creating folders failed with: ", e.what());
-    }
+    }*/
 }
 
-QString LobbyInterface::getSpringHome() {
-    return QString::fromStdWString(springHome.wstring());
+std::string LobbyInterface::getSpringHome() {
+    return toStdString(springHome.wstring()); // TODO check if equivalent to springHome.string()
 }
 
-QString LobbyInterface::readSpringHomeSetting() {
+std::string LobbyInterface::readSpringHomeSetting() {
     try {
         uifstream in(executablePath / "swlrc");
         in.exceptions(std::ios::failbit);
@@ -166,15 +151,16 @@ QString LobbyInterface::readSpringHomeSetting() {
     } catch(...) {
         springHomeSetting = "";
     }
-    return QString::fromStdWString(springHomeSetting.wstring());
+    return toStdString(springHomeSetting.wstring());
 }
 
-void LobbyInterface::writeSpringHomeSetting(QString path) {
-    springHomeSetting = path.toStdWString();
+void LobbyInterface::writeSpringHomeSetting(std::string path) {
+    springHomeSetting = toStdWString(path);
     uofstream out(executablePath / "swlrc");
-    out << "springHome:" << toStdString(springHomeSetting.wstring()) << std::endl;
+    out << "springHome:" << path << std::endl;
 }
 
+#if 0
 void LobbyInterface::connect(QString host, unsigned int port) {
     network.connect(host.toStdString(), port);
 }
@@ -224,19 +210,6 @@ bool LobbyInterface::event(QEvent* evt) {
         return true;
     } else {
         return QObject::event(evt);
-    }
-}
-
-void LobbyInterface::jsMessage(std::string source, int lineNumber, std::string message) {
-    if (message.find("<TASSERVER>") != std::string::npos ||
-            message.find("<LOCAL>") != std::string::npos) {
-        if (debugNetwork)
-            logger.debug(message);
-    } else if (message.find("<CMD>") != std::string::npos) {
-        if (debugCommands)
-            logger.debug(message);
-    } else {
-        logger.warning(source, ":", lineNumber, " ", message);
     }
 }
 
@@ -501,80 +474,6 @@ void LobbyInterface::writeToFile(QString path, QString line) {
     out << line.toStdString() << std::endl;
 }
 
-#ifdef Q_OS_LINUX
-size_t feed_data(void* buf, size_t size, size_t mult, mpg123_handle* mpg) {
-    int err;
-    if ((err = mpg123_feed(mpg, (const unsigned char*)buf, size * mult)) != MPG123_OK)
-        std::cerr << "feed_data(): error " << err << std::endl;
-    return size * mult;
-}
-#endif
-void LobbyInterface::playSound(QString url) {
-    #ifdef Q_OS_LINUX
-        auto thread = boost::thread([=](){
-            mpg123_handle* mpg = mpg123_new(NULL, NULL);
-            mpg123_format_none(mpg);
-            if (mpg123_format(mpg, 44100, 2, MPG123_ENC_SIGNED_16) == MPG123_ERR) {
-                logger.warning("playSound(): couldn't set decoding format.");
-                return;
-            }
-            mpg123_open_feed(mpg);
-
-            auto handle = curl_easy_init();
-            curl_easy_setopt(handle, CURLOPT_URL, url.toStdString().c_str());
-            curl_easy_setopt(handle, CURLOPT_WRITEDATA, mpg);
-            curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, feed_data);
-
-            CURLcode err;
-            if ((err = curl_easy_perform(handle)) != 0) {
-                logger.warning("playSound(): can't access URL: ", url.toStdString(), ": ", curl_easy_strerror(err));
-                return;
-            }
-            curl_easy_cleanup(handle);
-
-            long rate;
-            int channels, enc;
-            mpg123_getformat(mpg, &rate, &channels, &enc);
-            if (channels != 2 || enc != MPG123_ENC_SIGNED_16) {
-                logger.warning("playSound(): bad encoding.");
-                return;
-            }
-            // It seems to always force 44100 but whatever.
-            logger.debug("playSound(): samle rate: ", rate);
-
-            int res;
-            snd_pcm_t* pcm;
-            if ((res = snd_pcm_open(&pcm, "default", SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
-                logger.warning("playSound(): cannot open audio device: ", snd_strerror(res));
-                return;
-            }
-            if ((res = snd_pcm_set_params(pcm, SND_PCM_FORMAT_S16_LE, SND_PCM_ACCESS_RW_INTERLEAVED, 2, rate, 1, 1000000)) < 0) {
-                logger.warning("playSound(): cannot set audio device params: ", snd_strerror(res));
-                return;
-            }
-
-            int16_t buf[1024];
-            size_t done;
-            while ((res = mpg123_read(mpg, (unsigned char*)buf, 1024 * sizeof(int16_t), &done)) == MPG123_OK || res == MPG123_DONE) {
-                snd_pcm_sframes_t frames = done / sizeof(int16_t) / 2;
-                snd_pcm_sframes_t written;
-                if ((written = snd_pcm_writei(pcm, buf, frames)) != frames) {
-                    logger.warning("playSound(): wrote ", written, " frames instead of ", frames);
-                }
-            }
-
-            snd_pcm_drain(pcm);
-            snd_pcm_close(pcm);
-            mpg123_delete(mpg);
-        });
-        thread.detach();
-    #else
-        if (mediaPlayer.state() != QMediaPlayer::StoppedState)
-            return;
-        mediaPlayer.setMedia(QUrl(url));
-        mediaPlayer.play();
-    #endif
-}
 
 
 /* TODO: replace with a function to get replay info because that's how

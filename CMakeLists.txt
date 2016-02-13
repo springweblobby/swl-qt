@@ -14,6 +14,7 @@ add_executable(
     src/app.h
     src/app.cpp
     src/v8context.cpp
+    src/marshal.h
     src/lobbyinterface.cpp
     src/networkhandler.cpp
     src/processrunner.cpp
