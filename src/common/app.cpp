@@ -1,9 +1,8 @@
-#include <cef_client.h>
 #include "app.h"
 #include "platform.h"
 
 class Client :
-    public CefClient,
+    public ClientBase,
     public CefLoadHandler,
     public CefLifeSpanHandler,
     public CefDisplayHandler,
@@ -71,7 +70,7 @@ private:
 void App::OnContextInitialized() {
     CefWindowInfo info;
 #ifdef OS_WIN
-    info.SetAsPopup(NULL, "weblobby");
+    info.SetAsPopup(NULL, "cefwindow");
 #endif
     
     CefBrowserSettings settings;
@@ -82,7 +81,7 @@ void App::OnContextInitialized() {
 
     auto url = CefCommandLine::GetGlobalCommandLine()->GetSwitchValue("url");
     if (url.empty())
-        url = "weblobby://";
+        url = "app://";
     auto browser = CefBrowserHost::CreateBrowserSync(info, new Client, url, settings, NULL);
     Platform::setWindowTitle(browser->GetHost()->GetWindowHandle(), "Loading...");
     Platform::maximizeWindow(browser->GetHost()->GetWindowHandle());

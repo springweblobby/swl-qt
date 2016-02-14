@@ -5,6 +5,7 @@ set(lib_sources
     ${lib_path}/cef_wrapper_internal.h
     ${lib_path}/cef_wrapper.cpp
     ${lib_path}/v8context.cpp
+    ${lib_path}/ipc.cpp
 )
 
 add_library(
@@ -12,6 +13,7 @@ add_library(
     ${common_sources}
     ${lib_sources}
 )
+target_link_libraries(cef_wrapper ${common_libs})
 
 add_executable(
     render
@@ -19,5 +21,10 @@ add_executable(
     ${lib_sources}
     ${lib_path}/main_render.cpp
 )
-
 target_link_libraries(render ${common_libs})
+
+add_executable(
+    cef_wrapper_test
+    ${lib_path}/test.cpp
+)
+target_link_libraries(cef_wrapper_test cef_wrapper)

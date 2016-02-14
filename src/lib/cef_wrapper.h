@@ -20,10 +20,8 @@ void initialize(const char* renderProcessExecutablePath, int argc, char** argv);
 void deinitialize();
 void setWindowProperties();
 void startMessageLoop();
-void registerCustomSchemaHandler(const char* schema,
-    int (*getResource)(const char* url, char** data));
-void registerApiFunction(const char* name,
-    const char* (*handler)(const char* jsonArgs));
+void registerAppSchemaHandler(int (*getResource)(const char* url, char** data));
+void registerApiFunction(const char* name, const char* (*handler)(const char* jsonArgs));
 void executeJavascript(const char* code);
 
 #ifdef __cplusplus

@@ -10,10 +10,10 @@
 std::map<std::string,
     std::function<std::string(const std::string&)>>
     Internal::registeredApiFunctions;
-std::map<std::string,
-    std::function<int(const std::string&, char**)>>
-    Internal::registeredSchemaHandlers;
+std::function<int(const std::string&, char**)> Internal::appSchemaHandler;
 CefRefPtr<CefFrame> Internal::mainFrame;
+std::map<int, CefRefPtr<CefV8Value>> Internal::apiCallbacks;
+int Internal::callbackId = 0;
 
 void initialize(const char* renderExe, int argc, char** argv) {
 
@@ -41,7 +41,7 @@ void initialize(const char* renderExe, int argc, char** argv) {
 void deinitialize() {
     CefShutdown();
     Internal::registeredApiFunctions.clear();
-    Internal::registeredSchemaHandlers.clear();
+    Internal::appSchemaHandler = std::function<int(const std::string&, char**)>();
     Internal::mainFrame = NULL;
 }
 
@@ -53,8 +53,8 @@ void startMessageLoop() {
     CefRunMessageLoop();
 }
 
-void registerCustomSchemaHandler(const char* schema, int (*handler)(const char* url, char** data)) {
-    Internal::registeredSchemaHandlers[schema] = [=](const std::string& url, char** data) -> int {
+void registerAppSchemaHandler(int (*handler)(const char* url, char** data)) {
+    Internal::appSchemaHandler = [=](const std::string& url, char** data) -> int {
         return handler(url.c_str(), data);
     };
 }
@@ -66,6 +66,6 @@ void registerApiFunction(const char* name, const char* (*handler)(const char* js
 }
 
 void executeJavascript(const char* code) {
-    if (Internal::mainFrame)
+    if (Internal::mainFrame && Internal::mainFrame->IsValid())
         Internal::mainFrame->ExecuteJavaScript(code, Internal::mainFrame->GetURL(), 0);
 }
