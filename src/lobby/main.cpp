@@ -1,5 +1,5 @@
 #include <curl/curl.h>
-#include "app.h"
+#include "common/app.h"
 
 #ifdef OS_LINUX
 #include <X11/Xlib.h>
@@ -7,17 +7,6 @@
 
 int main(int argc, char *argv[]) {
     curl_global_init(CURL_GLOBAL_ALL);
-
-    CefRefPtr<App> app(new App);
-    CefMainArgs args(argc, argv);
-
-    int exitCode = CefExecuteProcess(args, app, NULL);
-    if (exitCode > 0)
-        return exitCode;
-
-    CefSettings settings;
-    settings.no_sandbox = 1;
-    CefString(&settings.product_version).FromASCII("weblobby");
 
 #ifdef OS_LINUX
     auto errHandler = [](Display* display, XErrorEvent* evt) -> int {
@@ -30,9 +19,21 @@ int main(int argc, char *argv[]) {
     XSetIOErrorHandler(ioErrHandler);
 #endif
 
+    CefRefPtr<App> app(new App);
+    CefMainArgs args(argc, argv);
+
+    int exitCode = CefExecuteProcess(args, app, NULL);
+    if (exitCode > 0)
+        return exitCode;
+
+    CefSettings settings;
+    settings.no_sandbox = 1;
+    CefString(&settings.product_version).FromASCII("weblobby");
+
     CefInitialize(args, settings, app, NULL);
     CefRunMessageLoop();
     CefShutdown();
+    curl_global_cleanup();
 
     return 0;
 
@@ -45,6 +46,5 @@ int main(int argc, char *argv[]) {
     webLobbyWindow.showMaximized();
 
     auto exitCode = app.exec();
-    curl_global_cleanup();
     return exitCode;*/
 }

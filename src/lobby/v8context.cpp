@@ -1,6 +1,6 @@
-#include "app.h"
+#include "common/app.h"
 #include "lobbyinterface.h"
-#include "marshal.h"
+#include "common/marshal.h"
 #include <cef_version.h>
 #include <wrapper/cef_helpers.h>
 
