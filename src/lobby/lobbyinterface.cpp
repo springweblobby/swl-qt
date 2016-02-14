@@ -21,7 +21,6 @@ namespace fs = boost::filesystem;
 LobbyInterface::LobbyInterface(CefRefPtr<CefV8Context> context) : context(context),
         springHome(""), network(NULL, logger) {
     logger.setEventReceiver(NULL);
-    logger.info("Created LobbyInterface"); // XXX
 
     #if defined(OS_LINUX) || defined(OS_MACOSX)
         char buf[1024];
@@ -39,7 +38,6 @@ LobbyInterface::LobbyInterface(CefRefPtr<CefV8Context> context) : context(contex
 }
 
 LobbyInterface::~LobbyInterface() {
-    logger.info("Destroyed LobbyInterface"); // XXX
     network.disconnect();
     for (auto it = downloadThreads.begin(); it != downloadThreads.end(); it++) {
         if (it->joinable())
