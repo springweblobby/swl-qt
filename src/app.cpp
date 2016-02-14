@@ -1,12 +1,15 @@
 #include <cef_client.h>
 #include "app.h"
+#include "platform.h"
 
 class Client :
     public CefClient,
     public CefLoadHandler,
     public CefLifeSpanHandler,
+    public CefDisplayHandler,
     public CefKeyboardHandler {
 public:
+    Client() : devToolsOpen(false) {}
     CefRefPtr<CefKeyboardHandler> GetKeyboardHandler() override {
         return this;
     }
@@ -32,6 +35,16 @@ public:
         if (evt.windows_key_code == 0x74 && evt.type == KEYEVENT_RAWKEYDOWN) { // F5
             browser->ReloadIgnoreCache();
             return true;
+        } else if (evt.windows_key_code == 0x7B && evt.type == KEYEVENT_RAWKEYDOWN) { // F12
+            if (devToolsOpen) {
+                browser->GetHost()->CloseDevTools();
+                devToolsOpen = false;
+            } else {
+                browser->GetHost()->ShowDevTools(CefWindowInfo(), new DummyClient,
+                    CefBrowserSettings(), CefPoint());
+                devToolsOpen = true;
+            }
+            return true;
         }
         return false;
     }
@@ -43,9 +56,14 @@ public:
             frame->LoadString(str, "about:error");
         }
     }
+    void OnTitleChange(CefRefPtr<CefBrowser> browser, const CefString& title) {
+        Platform::setWindowTitle(browser->GetHost()->GetWindowHandle(), title.ToString());
+    }
     // TODO CefResourceHander::OnBeforeBrowse (but OnBeforeNavigation probs better)
 private:
     CefRefPtr<CefBrowser> mainBrowser;
+    bool devToolsOpen;
+    class DummyClient : public CefClient { IMPLEMENT_REFCOUNTING(DummyClient) };
     IMPLEMENT_REFCOUNTING(Client)
 };
 
@@ -64,5 +82,6 @@ void App::OnContextInitialized() {
     auto url = CefCommandLine::GetGlobalCommandLine()->GetSwitchValue("url");
     if (url.empty())
         url = "weblobby://";
-    CefBrowserHost::CreateBrowser(info, new Client, url, settings, NULL);
+    auto browser = CefBrowserHost::CreateBrowserSync(info, new Client, url, settings, NULL);
+    Platform::maximizeWindow(browser->GetHost()->GetWindowHandle());
 }

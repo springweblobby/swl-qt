@@ -7,20 +7,38 @@ endif ()
 
 include_directories("${swl-qt_SOURCE_DIR}/Boost.Process-0.5")
 
-add_executable(
-    weblobby
-
+set(weblobby_sources
     src/main.cpp
     src/app.h
     src/app.cpp
     src/v8context.cpp
     src/marshal.h
+    src/platform.h
     src/lobbyinterface.cpp
     src/networkhandler.cpp
     src/processrunner.cpp
     src/lobbyinterface.h
     src/logger.h
     src/ufstream.h
+)
+
+if (APPLE)
+    set(platform_sources src/platform_mac.cpp)
+elseif (WIN32)
+    set(platform_sources src/platform_windows.cpp)
+elseif (UNIX)
+    set(platform_sources src/platform_linux.cpp)
+    find_package(X11 REQUIRED)
+    include_directories(${X11_X11_INCLUDE_PATH})
+    target_link_libraries(weblobby ${X11_X11_LIB})
+else ()
+    message(FATAL_ERROR "Unsupported platform.")
+endif()
+
+add_executable(
+    weblobby
+    ${weblobby_sources}
+    ${platform_sources}
 )
 
 set(Boost_USE_MULTITHREADED ON)
@@ -31,12 +49,6 @@ target_link_libraries(weblobby ${Boost_LIBRARIES})
 find_package(CURL 7 REQUIRED)
 include_directories(${CURL_INCLUDE_DIRS})
 target_link_libraries(weblobby ${CURL_LIBRARIES})
-
-if (UNIX)
-    find_package(X11 REQUIRED)
-    include_directories(${X11_X11_INCLUDE_PATH})
-    target_link_libraries(weblobby ${X11_X11_LIB})
-endif ()
 
 set(cef_version 3.2454.1344.g2782fb8)
 
