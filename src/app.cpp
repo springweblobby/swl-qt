@@ -9,7 +9,6 @@ class Client :
     public CefDisplayHandler,
     public CefKeyboardHandler {
 public:
-    Client() : devToolsOpen(false) {}
     CefRefPtr<CefKeyboardHandler> GetKeyboardHandler() override {
         return this;
     }
@@ -19,15 +18,22 @@ public:
     CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override {
         return this;
     }
+    CefRefPtr<CefDisplayHandler> GetDisplayHandler() override {
+        return this;
+    }
 
     void OnAfterCreated(CefRefPtr<CefBrowser> browser) override {
         if (!mainBrowser)
             mainBrowser = browser;
+        else
+            devTools = browser;
     }
     void OnBeforeClose(CefRefPtr<CefBrowser> browser) override {
         if (browser->IsSame(mainBrowser)) {
             mainBrowser = NULL;
             CefQuitMessageLoop();
+        } else {
+            devTools = NULL;
         }
     }
     bool OnPreKeyEvent(CefRefPtr<CefBrowser> browser, const CefKeyEvent& evt,
@@ -36,13 +42,9 @@ public:
             browser->ReloadIgnoreCache();
             return true;
         } else if (evt.windows_key_code == 0x7B && evt.type == KEYEVENT_RAWKEYDOWN) { // F12
-            if (devToolsOpen) {
-                browser->GetHost()->CloseDevTools();
-                devToolsOpen = false;
-            } else {
-                browser->GetHost()->ShowDevTools(CefWindowInfo(), new DummyClient,
+            if (!devTools) {
+                browser->GetHost()->ShowDevTools(CefWindowInfo(), this,
                     CefBrowserSettings(), CefPoint());
-                devToolsOpen = true;
             }
             return true;
         }
@@ -56,14 +58,13 @@ public:
             frame->LoadString(str, "about:error");
         }
     }
-    void OnTitleChange(CefRefPtr<CefBrowser> browser, const CefString& title) {
+    void OnTitleChange(CefRefPtr<CefBrowser> browser, const CefString& title) override {
         Platform::setWindowTitle(browser->GetHost()->GetWindowHandle(), title.ToString());
     }
     // TODO CefResourceHander::OnBeforeBrowse (but OnBeforeNavigation probs better)
 private:
     CefRefPtr<CefBrowser> mainBrowser;
-    bool devToolsOpen;
-    class DummyClient : public CefClient { IMPLEMENT_REFCOUNTING(DummyClient) };
+    CefRefPtr<CefBrowser> devTools;
     IMPLEMENT_REFCOUNTING(Client)
 };
 
@@ -83,5 +84,6 @@ void App::OnContextInitialized() {
     if (url.empty())
         url = "weblobby://";
     auto browser = CefBrowserHost::CreateBrowserSync(info, new Client, url, settings, NULL);
+    Platform::setWindowTitle(browser->GetHost()->GetWindowHandle(), "Loading...");
     Platform::maximizeWindow(browser->GetHost()->GetWindowHandle());
 }

@@ -24,12 +24,19 @@ public:
             END_DEFINE_API()
             return true;
         } catch (Marshal::NotEnoughArgumentsException) {
-            exception = "Not enough arguments for function " + name.ToString();
+            exception = "Not enough arguments for API function " + name.ToString();
         } catch (Marshal::TooManyArgumentsException) {
-            exception = "Too many arguments for function " + name.ToString();
+            exception = "Too many arguments for API function " + name.ToString();
         } catch (Marshal::TypeMismatchException) {
-            exception = "Type mismatch in function " + name.ToString();
+            exception = "Type mismatch in API function " + name.ToString();
         }
+        // For some reason just setting the exception string and returning
+        // false as the docs instruct us doesn't actually throw an exception,
+        // so we have to improvise.
+        CefRefPtr<CefV8Value> val;
+        CefRefPtr<CefV8Exception> e;
+        CefV8Context::GetEnteredContext()->Eval("throw new TypeError('" + exception.ToString() +
+            "');", val, e);
         return false;
     }
 private:
