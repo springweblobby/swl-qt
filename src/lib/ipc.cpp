@@ -28,7 +28,7 @@ bool App::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
         context->Enter();
         auto apiObj = context->GetGlobal()->GetValue("CefWrapperAPI");
         auto handler = apiObj->GetValue("__dummy")->GetFunctionHandler();
-        for(int i = 0; i < args->GetSize(); i++) {
+        for(unsigned int i = 0; i < args->GetSize(); i++) {
             apiObj->SetValue(args->GetString(i), CefV8Value::CreateFunction(
                 args->GetString(i), handler), V8_PROPERTY_ATTRIBUTE_NONE);
         }

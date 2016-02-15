@@ -29,7 +29,11 @@ void initialize(const char* renderExe, int argc, char** argv) {
 #endif
 
     CefRefPtr<App> app(new App);
+#ifdef OS_WIN
+    CefMainArgs args(GetModuleHandle(NULL));
+#else
     CefMainArgs args(argc, argv);
+#endif
 
     CefSettings settings;
     settings.no_sandbox = 1;

@@ -16,13 +16,19 @@
 extern "C" {
 #endif
 
-void initialize(const char* renderProcessExecutablePath, int argc, char** argv);
-void deinitialize();
-void setWindowProperties();
-void startMessageLoop();
-void registerAppSchemaHandler(int (*getResource)(const char* url, char** data));
-void registerApiFunction(const char* name, const char* (*handler)(const char* jsonArgs));
-void executeJavascript(const char* code);
+#ifdef _MSC_VER
+#define EXPORT __declspec(dllexport)
+#else
+#define EXPORT
+#endif
+
+EXPORT void initialize(const char* renderProcessExecutablePath, int argc, char** argv);
+EXPORT void deinitialize();
+EXPORT void setWindowProperties();
+EXPORT void startMessageLoop();
+EXPORT void registerAppSchemaHandler(int (*getResource)(const char* url, char** data));
+EXPORT void registerApiFunction(const char* name, const char* (*handler)(const char* jsonArgs));
+EXPORT void executeJavascript(const char* code);
 
 #ifdef __cplusplus
 }

@@ -4,6 +4,7 @@
 #include <cef_frame.h>
 #include <cef_v8.h>
 #include <map>
+#include <functional>
 
 namespace Internal {
 

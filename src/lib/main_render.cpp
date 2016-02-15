@@ -3,5 +3,10 @@
 #include "common/app.h"
 
 int main(int argc, char** argv) {
-    return CefExecuteProcess(CefMainArgs(argc, argv), new App, NULL);
+#ifdef OS_WIN
+    CefMainArgs args(GetModuleHandle(NULL));
+#else
+    CefMainArgs args(argc, argv);
+#endif
+    return CefExecuteProcess(args, new App, NULL);
 }
