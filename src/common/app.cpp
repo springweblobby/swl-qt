@@ -42,7 +42,11 @@ public:
             return true;
         } else if (evt.windows_key_code == 0x7B && evt.type == KEYEVENT_RAWKEYDOWN) { // F12
             if (!devTools) {
-                browser->GetHost()->ShowDevTools(CefWindowInfo(), this,
+                CefWindowInfo info;
+#ifdef OS_WIN
+                info.SetAsPopup(NULL, "devtools");
+#endif
+                browser->GetHost()->ShowDevTools(info, this,
                     CefBrowserSettings(), CefPoint());
             }
             return true;
