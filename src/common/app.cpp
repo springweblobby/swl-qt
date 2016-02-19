@@ -55,10 +55,10 @@ public:
     }
     void OnLoadError(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame> frame, ErrorCode errCode,
             const CefString& errText, const CefString& url) override {
-        if (frame->IsMain()) {
+        if (frame->IsMain() && errCode != ERR_NONE && errCode != ERR_ABORTED) {
             std::string str = "<h1>Error</h1><h2>Failed loading " + url.ToString() + "</h2><h2>" +
                 errText.ToString() + "</h2><h3>Error code " + std::to_string(errCode) + "</h3>";
-            frame->LoadString(str, "about:error");
+            frame->LoadString(str, url);
         }
     }
     void OnTitleChange(CefRefPtr<CefBrowser> browser, const CefString& title) override {
