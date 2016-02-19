@@ -30,9 +30,11 @@ set(common_sources
     ${platform_sources}
 )
 
+set(common_libs "")
 if (UNIX AND NOT APPLE)
     find_package(X11 REQUIRED)
     include_directories(${X11_X11_INCLUDE_PATH})
+    set(common_libs ${common_libs} ${X11_X11_LIB})
 endif()
 
 set(cef_version 3.2454.1344.g2782fb8)
@@ -71,7 +73,7 @@ else ()
     message(FATAL_ERROR "Please download CEF version ${cef_version} for ${cef_arch} from http://cefbuilds.com and extract into the source directory.")
 endif ()
 
-set(common_libs ${X11_X11_LIB} libcef_dll_wrapper ${libcef_dll})
+set(common_libs ${common_libs} libcef_dll_wrapper ${libcef_dll})
 
 if (BUILD_WEBLOBBY)
     file(COPY ${cef_resources} DESTINATION weblobby)

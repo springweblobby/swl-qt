@@ -16,7 +16,7 @@ add_library(
 target_link_libraries(cef_wrapper ${common_libs})
 
 add_executable(
-    render
+    render WIN32
     ${common_sources}
     ${lib_sources}
     ${lib_path}/main_render.cpp

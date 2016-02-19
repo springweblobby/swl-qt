@@ -26,6 +26,8 @@ void initialize(const char* renderExe, int argc, char** argv) {
     };
     XSetErrorHandler(errHandler);
     XSetIOErrorHandler(ioErrHandler);
+#elif OS_WIN
+    CefEnableHighDPISupport();
 #endif
 
     CefRefPtr<App> app(new App);
