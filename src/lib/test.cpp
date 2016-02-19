@@ -11,11 +11,17 @@ const char* testString(const char* args) {
     return "\"this is a string\"";
 }
 
+const char* testException(const char* argc) {
+    executeJavascript("window.foo = 2; throw new Error('Test error');");
+    return "null";
+}
+
 int main(int argc, char** argv) {
     // "./render" works fine on both Linux and Windows.
     initialize("./render", argc, argv);
     registerApiFunction("testNumber", &testNumber);
     registerApiFunction("testString", &testString);
+    registerApiFunction("testException", &testException);
     startMessageLoop();
     deinitialize();
 }

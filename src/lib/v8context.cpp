@@ -63,5 +63,4 @@ void App::OnContextCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> fr
     global->SetValue("CefWrapperAPI", apiObj, V8_PROPERTY_ATTRIBUTE_NONE);
 
     context->Exit();
-    Internal::mainFrame = frame;
 }

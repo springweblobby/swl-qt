@@ -54,6 +54,9 @@ bool ClientBase::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
         browser->SendProcessMessage(PID_RENDERER, resMsg);
         return true;
     } else if (msg->GetName() == "get_api_func_list") {
+        // Context just got created, save the frame for executeJavascript().
+        mainFrame = browser->GetMainFrame();
+
         auto resMsg = CefProcessMessage::Create("api_func_list");
         int n = 0;
         for (auto i : registeredApiFunctions)
