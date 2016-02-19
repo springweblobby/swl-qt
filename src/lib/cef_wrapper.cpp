@@ -4,6 +4,12 @@
 
 #ifdef OS_LINUX
 #include <X11/Xlib.h>
+static int errHandler(Display* display, XErrorEvent* evt) {
+    return 0;
+}
+static int ioErrHandler(Display* display) {
+    return 0;
+}
 #endif
 
 // Instaniate global vars.
@@ -18,14 +24,8 @@ int Internal::callbackId = 0;
 void initialize(const char* renderExe, int argc, char** argv) {
 
 #ifdef OS_LINUX
-    auto errHandler = [](Display* display, XErrorEvent* evt) -> int {
-        return 0;
-    };
-    auto ioErrHandler = [](Display* display) -> int {
-        return 0;
-    };
-    XSetErrorHandler(errHandler);
-    XSetIOErrorHandler(ioErrHandler);
+    XSetErrorHandler(&errHandler);
+    XSetIOErrorHandler(&ioErrHandler);
 #elif OS_WIN
     CefEnableHighDPISupport();
 #endif
