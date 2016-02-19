@@ -37,6 +37,7 @@ void initialize(const char* renderExe, int argc, char** argv) {
 
     CefSettings settings;
     settings.no_sandbox = 1;
+    CefString(&settings.browser_subprocess_path).FromString(renderExe);
     CefString(&settings.product_version).FromASCII("cef-wrapper");
 
     CefInitialize(args, settings, app, NULL);

@@ -12,7 +12,8 @@ const char* testString(const char* args) {
 }
 
 int main(int argc, char** argv) {
-    initialize("render", argc, argv);
+    // "./render" works fine on both Linux and Windows.
+    initialize("./render", argc, argv);
     registerApiFunction("testNumber", &testNumber);
     registerApiFunction("testString", &testString);
     startMessageLoop();
