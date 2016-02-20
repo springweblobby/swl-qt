@@ -16,9 +16,25 @@ const char* testException(const char* argc) {
     return "null";
 }
 
+char page[] =
+    "<html><head><title>CEF wrapper test</title></head>"
+    "<body>"
+    "<h1>It works!</h1>"
+    "<script>"
+    "document.write('<h3>CEF ' + CefWrapperAPI.cefVersion + '</h3>');"
+    "</script>"
+    "</body></html>";
+int appSchemaHandler(const char* url, char* type, char** data) {
+    char mimeType[] = "text/html";
+    std::copy(mimeType, mimeType + sizeof(mimeType) / sizeof(char), type);
+    *data = page;
+    return sizeof(page);
+}
+
 int main(int argc, char** argv) {
     // "./render" works fine on both Linux and Windows.
     initialize("./render", argc, argv);
+    registerAppSchemaHandler(&appSchemaHandler);
     registerApiFunction("testNumber", &testNumber);
     registerApiFunction("testString", &testString);
     registerApiFunction("testException", &testException);

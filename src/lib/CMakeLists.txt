@@ -6,6 +6,7 @@ set(lib_sources
     ${lib_path}/cef_wrapper.cpp
     ${lib_path}/v8context.cpp
     ${lib_path}/ipc.cpp
+    ${lib_path}/app_schema.cpp
 )
 
 add_library(

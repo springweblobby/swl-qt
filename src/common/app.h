@@ -3,6 +3,7 @@
 
 #include <cef_app.h>
 #include <cef_client.h>
+#include <cef_scheme.h>
 
 // Remember that BrowserProcessHandler and CefRenderProcessHandler methods run in
 // separate processes, so data has to be shared explicitly.
@@ -35,6 +36,9 @@ public:
         if (browser->IsSame(mainBrowser))
             mainBrowser = NULL;
     }
+    void OnRegisterCustomSchemes(CefRefPtr<CefSchemeRegistrar> registrar) {
+        registrar->AddCustomScheme("app", false, true, false);
+    }
 private:
     CefRefPtr<CefBrowser> mainBrowser; // only available in render process
     IMPLEMENT_REFCOUNTING(App)
@@ -44,6 +48,14 @@ class ClientBase : public CefClient {
 public:
     bool OnProcessMessageReceived(CefRefPtr<CefBrowser>, CefProcessId,
         CefRefPtr<CefProcessMessage>) override;
+};
+
+class AppSchemeFactory : public CefSchemeHandlerFactory {
+public:
+    CefRefPtr<CefResourceHandler> Create(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame>,
+        const CefString&, CefRefPtr<CefRequest>) override;
+private:
+    IMPLEMENT_REFCOUNTING(AppSchemeFactory)
 };
 
 #endif // _APP_H

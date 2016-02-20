@@ -16,7 +16,7 @@ static int ioErrHandler(Display* display) {
 std::map<std::string,
     std::function<std::string(const std::string&)>>
     Internal::registeredApiFunctions;
-std::function<int(const std::string&, char**)> Internal::appSchemaHandler;
+std::function<int(const char*, char*, char**)> Internal::appSchemaHandler;
 CefRefPtr<CefFrame> Internal::mainFrame;
 std::map<int, CefRefPtr<CefV8Value>> Internal::apiCallbacks;
 int Internal::callbackId = 0;
@@ -48,7 +48,7 @@ void initialize(const char* renderExe, int argc, char** argv) {
 void deinitialize() {
     CefShutdown();
     Internal::registeredApiFunctions.clear();
-    Internal::appSchemaHandler = std::function<int(const std::string&, char**)>();
+    Internal::appSchemaHandler = std::function<int(const char*, char*, char**)>();
     Internal::mainFrame = NULL;
 }
 
@@ -60,10 +60,8 @@ void startMessageLoop() {
     CefRunMessageLoop();
 }
 
-void registerAppSchemaHandler(int (*handler)(const char* url, char** data)) {
-    Internal::appSchemaHandler = [=](const std::string& url, char** data) -> int {
-        return handler(url.c_str(), data);
-    };
+void registerAppSchemaHandler(int (*handler)(const char* url, char* type, char** data)) {
+    Internal::appSchemaHandler = handler;
 }
 
 void registerApiFunction(const char* name, const char* (*handler)(const char* jsonArgs)) {

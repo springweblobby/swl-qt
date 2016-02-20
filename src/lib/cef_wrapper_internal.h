@@ -12,7 +12,7 @@ namespace Internal {
     extern std::map<std::string,
         std::function<std::string(const std::string&)>>
         registeredApiFunctions;
-    extern std::function<int(const std::string&, char**)> appSchemaHandler;
+    extern std::function<int(const char*, char*, char**)> appSchemaHandler;
     extern CefRefPtr<CefFrame> mainFrame;
 
     // Only available in the render process.

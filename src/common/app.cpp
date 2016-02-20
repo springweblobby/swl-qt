@@ -76,6 +76,8 @@ void App::OnContextInitialized() {
 #ifdef OS_WIN
     info.SetAsPopup(NULL, "cefwindow");
 #endif
+
+    CefRegisterSchemeHandlerFactory("app", "", new AppSchemeFactory);
     
     CefBrowserSettings settings;
     CefString(&settings.default_encoding).FromASCII("UTF-8");
