@@ -12,6 +12,7 @@ set(lobby_sources
     ${lobby_path}/ufstream.h
     ${lobby_path}/v8context.cpp
     ${lobby_path}/ipc.cpp
+    ${lobby_path}/app_schema.cpp
 )
 
 add_executable(

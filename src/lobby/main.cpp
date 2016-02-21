@@ -1,5 +1,6 @@
 #include <curl/curl.h>
 #include "common/app.h"
+#include <cef_parser.h>
 
 #ifdef OS_LINUX
 #include <X11/Xlib.h>

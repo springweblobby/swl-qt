@@ -4,8 +4,8 @@
 #include <wrapper/cef_stream_resource_handler.h>
 
 
-CefRefPtr<CefResourceHandler> AppSchemeFactory::Create(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, 
-        const CefString& schema, CefRefPtr<CefRequest> request) {
+CefRefPtr<CefResourceHandler> AppSchemeFactory::Create(CefRefPtr<CefBrowser> browser,
+        CefRefPtr<CefFrame> frame, const CefString& schema, CefRefPtr<CefRequest> request) {
     if (!Internal::appSchemaHandler)
         return NULL;
     char* data;

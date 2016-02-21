@@ -30,12 +30,14 @@ void Platform::setWindowTitle(CefWindowHandle handle, std::string title) {
         PropModeReplace, (const unsigned char*)title.c_str(), title.size());
 }
 
-void Platform::maximizeWindow(CefWindowHandle handle, bool maximize) {
-    send_NET_WM_event(handle, maximize ? _NET_WM_STATE_ADD : _NET_WM_STATE_REMOVE,
-        atom("_NET_WM_STATE_MAXIMIZED_HORZ"), atom("_NET_WM_STATE_MAXIMIZED_VERT"));
+void Platform::setWindowInfo(CefWindowInfo& info) {
 }
 
-void Platform::makeWindowFullscreen(CefWindowHandle handle, bool fullscreen) {
-    send_NET_WM_event(handle, fullscreen ? _NET_WM_STATE_ADD : _NET_WM_STATE_REMOVE,
-        atom("_NET_WM_STATE_FULLSCREEN"), 0);
+void Platform::showWindow(CefWindowHandle handle, bool fullscreen) {
+    if (fullscreen) {
+        send_NET_WM_event(handle, _NET_WM_STATE_ADD, atom("_NET_WM_STATE_FULLSCREEN"), 0);
+    } else {
+        send_NET_WM_event(handle, _NET_WM_STATE_ADD, atom("_NET_WM_STATE_MAXIMIZED_HORZ"),
+            atom("_NET_WM_STATE_MAXIMIZED_VERT"));
+    }
 }
