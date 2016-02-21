@@ -24,7 +24,6 @@ endif()
 
 set(common_sources
     ${common_path}/app.h
-    ${common_path}/app.cpp
     ${common_path}/marshal.h
     ${common_path}/platform.h
     ${platform_sources}

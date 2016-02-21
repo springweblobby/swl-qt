@@ -1,6 +1,7 @@
 #include "cef_wrapper.h"
 #include "cef_wrapper_internal.h"
 #include "common/app.h"
+#include <cef_parser.h>
 
 #ifdef OS_LINUX
 #include <X11/Xlib.h>
@@ -52,11 +53,24 @@ void deinitialize() {
     Internal::mainFrame = NULL;
 }
 
-void setWindowProperties() {
-    // TODO
-}
+void startMessageLoop(const char* bgColor, int fullscreen) {
+    CefWindowInfo info;
+    Platform::setWindowInfo(info);
 
-void startMessageLoop() {
+    CefBrowserSettings settings;
+    CefString(&settings.default_encoding).FromASCII("UTF-8");
+    settings.javascript_access_clipboard = STATE_ENABLED;
+    settings.javascript_close_windows = STATE_ENABLED;
+    settings.universal_access_from_file_urls = STATE_ENABLED;
+    CefParseCSSColor(bgColor, false, settings.background_color);
+
+    auto url = CefCommandLine::GetGlobalCommandLine()->GetSwitchValue("url");
+    if (url.empty())
+        url = "app://";
+    auto browser = CefBrowserHost::CreateBrowserSync(info, new Client, url, settings, NULL);
+    Platform::setWindowTitle(browser->GetHost()->GetWindowHandle(), "Loading...");
+    Platform::showWindow(browser->GetHost()->GetWindowHandle(), fullscreen != 0);
+
     CefRunMessageLoop();
 }
 
@@ -73,4 +87,8 @@ void registerApiFunction(const char* name, const char* (*handler)(const char* js
 void executeJavascript(const char* code) {
     if (Internal::mainFrame && Internal::mainFrame->IsValid())
         Internal::mainFrame->ExecuteJavaScript(code, Internal::mainFrame->GetURL(), 0);
+}
+
+void App::OnContextInitialized() {
+    CefRegisterSchemeHandlerFactory("app", "", new AppSchemeFactory);
 }

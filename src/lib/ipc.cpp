@@ -39,7 +39,7 @@ bool App::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
 }
 
 // Browser process received IPC message.
-bool ClientBase::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
+bool Client::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
         CefProcessId pid, CefRefPtr<CefProcessMessage> msg) {
 
     auto args = msg->GetArgumentList();

@@ -50,3 +50,25 @@ int main(int argc, char *argv[]) {
     auto exitCode = app.exec();
     return exitCode;*/
 }
+
+void App::OnContextInitialized() {
+    CefWindowInfo info;
+    Platform::setWindowInfo(info);
+
+    CefRegisterSchemeHandlerFactory("app", "", new AppSchemeFactory);
+    
+    CefBrowserSettings settings;
+    CefString(&settings.default_encoding).FromASCII("UTF-8");
+    settings.javascript_access_clipboard = STATE_ENABLED;
+    settings.javascript_close_windows = STATE_ENABLED;
+    settings.universal_access_from_file_urls = STATE_ENABLED;
+    CefParseCSSColor("black", false, settings.background_color);
+
+    auto url = CefCommandLine::GetGlobalCommandLine()->GetSwitchValue("url");
+    if (url.empty())
+        url = "app://";
+    auto browser = CefBrowserHost::CreateBrowserSync(info, new Client, url, settings, NULL);
+    Platform::setWindowTitle(browser->GetHost()->GetWindowHandle(), "Loading...");
+    Platform::showWindow(browser->GetHost()->GetWindowHandle(), !CefCommandLine::GetGlobalCommandLine()->
+        HasSwitch("no-fullscreen"));
+}

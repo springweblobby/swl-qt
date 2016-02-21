@@ -7,7 +7,7 @@ bool App::OnProcessMessageReceived(CefRefPtr<CefBrowser>,
 }
 
 // Browser process received IPC message.
-bool ClientBase::OnProcessMessageReceived(CefRefPtr<CefBrowser>,
+bool Client::OnProcessMessageReceived(CefRefPtr<CefBrowser>,
         CefProcessId, CefRefPtr<CefProcessMessage>) {
     return false;
 }

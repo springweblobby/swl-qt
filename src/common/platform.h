@@ -7,9 +7,9 @@
 
 namespace Platform {
 
+    void setWindowInfo(CefWindowInfo& info);
     void setWindowTitle(CefWindowHandle handle, std::string title);
-    void maximizeWindow(CefWindowHandle handle, bool maximize = true);
-    void makeWindowFullscreen(CefWindowHandle handle, bool fullscreen = true);
+    void showWindow(CefWindowHandle handle, bool fullscreen);
 
 }
 
