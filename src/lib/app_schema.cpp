@@ -1,6 +1,7 @@
 #include "common/app.h"
 #include "cef_wrapper_internal.h"
 
+#include <cef_parser.h>
 #include <wrapper/cef_stream_resource_handler.h>
 
 
@@ -9,12 +10,17 @@ CefRefPtr<CefResourceHandler> AppSchemeFactory::Create(CefRefPtr<CefBrowser> bro
     if (!Internal::appSchemaHandler)
         return NULL;
     char* data;
-    char type[256];
-    size_t size = Internal::appSchemaHandler(request->GetURL().ToString().c_str(), type, &data);
+    char typeBuf[256];
+    int size = Internal::appSchemaHandler(request->GetURL().ToString().c_str(), typeBuf, &data);
     if (size >= 0) {
+        CefString type = typeBuf;
+        if (type == "") {
+            std::string urlStr = request->GetURL().ToString();
+            type = CefGetMimeType(urlStr.substr(urlStr.find_last_of('.') + 1));
+        }
         CefRefPtr<CefStreamReader> stream = CefStreamReader::CreateForData(data, size);
         return new CefStreamResourceHandler(type, stream);
     } else {
-        return new CefStreamResourceHandler(404, "", "", CefResponse::HeaderMap(), NULL);
+        return NULL;
     }
 }

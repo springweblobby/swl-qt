@@ -38,7 +38,7 @@ public:
             mainBrowser = NULL;
     }
     void OnRegisterCustomSchemes(CefRefPtr<CefSchemeRegistrar> registrar) {
-        registrar->AddCustomScheme("app", false, false, false);
+        registrar->AddCustomScheme("cef", true, false, false);
     }
 private:
     CefRefPtr<CefBrowser> mainBrowser; // only available in render process

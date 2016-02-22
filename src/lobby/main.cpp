@@ -56,7 +56,7 @@ void App::OnContextInitialized() {
     CefWindowInfo info;
     Platform::setWindowInfo(info);
 
-    CefRegisterSchemeHandlerFactory("app", "", new AppSchemeFactory);
+    CefRegisterSchemeHandlerFactory("cef", "", new AppSchemeFactory);
     
     CefBrowserSettings settings;
     CefString(&settings.default_encoding).FromASCII("UTF-8");
@@ -67,7 +67,7 @@ void App::OnContextInitialized() {
 
     auto url = CefCommandLine::GetGlobalCommandLine()->GetSwitchValue("url");
     if (url.empty())
-        url = "app://";
+        url = "cef://app/";
     auto browser = CefBrowserHost::CreateBrowserSync(info, new Client, url, settings, NULL);
     Platform::setWindowTitle(browser->GetHost()->GetWindowHandle(), "Loading...");
     Platform::showWindow(browser->GetHost()->GetWindowHandle(), !CefCommandLine::GetGlobalCommandLine()->

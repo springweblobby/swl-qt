@@ -18,17 +18,34 @@ const char* testException(const char* argc) {
 
 char page[] =
     "<html><head><title>CEF wrapper test</title></head>"
+    "<link href=\"page.css\" rel=\"stylesheet\" type=\"text/css\">"
     "<body>"
     "<h1>It works!</h1>"
     "<script>"
     "document.write('<h3>CEF ' + CefWrapperAPI.cefVersion + '</h3>');"
     "</script>"
     "</body></html>";
-int appSchemaHandler(const char* url, char* type, char** data) {
-    char mimeType[] = "text/html";
-    std::copy(mimeType, mimeType + sizeof(mimeType) / sizeof(char), type);
-    *data = page;
-    return sizeof(page);
+char css[] =
+    "h1::after {"
+    "  content: ' OK';"
+    "  color: green;"
+    "  font-size: 0.6em;"
+    "}";
+int appSchemaHandler(const char* url_, char* type, char** data) {
+    std::string url = url_;
+    if (url == "cef://app/") {
+        char mimeType[] = "text/html";
+        *data = page;
+        std::copy(mimeType, mimeType + sizeof(mimeType) / sizeof(char), type);
+        return sizeof(page);
+    } else if (url == "cef://app/page.css") {
+        char mimeType[] = "text/css";
+        *data = css;
+        std::copy(mimeType, mimeType + sizeof(mimeType) / sizeof(char), type);
+        return sizeof(css);
+    } else {
+        return -1;
+    }
 }
 
 int main(int argc, char** argv) {

@@ -66,7 +66,7 @@ void startMessageLoop(const char* bgColor, int fullscreen) {
 
     auto url = CefCommandLine::GetGlobalCommandLine()->GetSwitchValue("url");
     if (url.empty())
-        url = "app://";
+        url = "cef://app/";
     auto browser = CefBrowserHost::CreateBrowserSync(info, new Client, url, settings, NULL);
     Platform::setWindowTitle(browser->GetHost()->GetWindowHandle(), "Loading...");
     Platform::showWindow(browser->GetHost()->GetWindowHandle(), fullscreen != 0);
@@ -90,5 +90,5 @@ void executeJavascript(const char* code) {
 }
 
 void App::OnContextInitialized() {
-    CefRegisterSchemeHandlerFactory("app", "", new AppSchemeFactory);
+    CefRegisterSchemeHandlerFactory("cef", "", new AppSchemeFactory);
 }
