@@ -14,7 +14,7 @@ void Platform::setWindowTitle(CefWindowHandle handle, std::string title) {
 
 void Platform::showWindow(CefWindowHandle handle, bool fullscreen) {
     if (fullscreen) {
-        SetWindowLong(handle, GWL_STYLE, GetWindowLong(handle, GWL_STYLE) & ~(WS_CAPTION | WS_THICKFRAME));
+        SetWindowLongPtr(handle, GWL_STYLE, GetWindowLongPtr(handle, GWL_STYLE) & ~(WS_CAPTION | WS_THICKFRAME));
         MONITORINFO info;
         info.cbSize = sizeof(info);
         GetMonitorInfo(MonitorFromWindow(handle, MONITOR_DEFAULTTONEAREST), &info);
