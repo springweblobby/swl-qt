@@ -53,7 +53,7 @@ void deinitialize() {
     Internal::mainFrame = NULL;
 }
 
-void startMessageLoop(const char* bgColor, int fullscreen) {
+void startMessageLoop(const char* urlStr, const char* bgColor, int fullscreen) {
     CefWindowInfo info;
     Platform::setWindowInfo(info);
 
@@ -66,7 +66,7 @@ void startMessageLoop(const char* bgColor, int fullscreen) {
 
     auto url = CefCommandLine::GetGlobalCommandLine()->GetSwitchValue("url");
     if (url.empty())
-        url = "cef://app/";
+        url = urlStr;
     auto browser = CefBrowserHost::CreateBrowserSync(info, new Client, url, settings, NULL);
     Platform::setWindowTitle(browser->GetHost()->GetWindowHandle(), "Loading...");
     Platform::showWindow(browser->GetHost()->GetWindowHandle(), fullscreen != 0);

@@ -55,6 +55,6 @@ int main(int argc, char** argv) {
     registerApiFunction("testNumber", &testNumber);
     registerApiFunction("testString", &testString);
     registerApiFunction("testException", &testException);
-    startMessageLoop("white", false);
+    startMessageLoop("cef://app/", "white", false);
     deinitialize();
 }

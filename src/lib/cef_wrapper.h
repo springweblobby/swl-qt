@@ -28,11 +28,11 @@ EXPORT void initialize(const char* renderProcessExecutablePath, int argc, char**
 // Deinitialize CEF.
 EXPORT void deinitialize();
 
-// Open cef://app/ in a window and start CEF message loop. This function will block until the window
+// Open url in a browser window and start CEF message loop. This function will block until the window
 // is closed. bgColor is a string describing the default background color of the browser window in CSS
 // format, like "black" or "rgb(20, 50, 100)". If fullscreen is non-zero the window will be shown in
 // borderless fullscreen mode.
-EXPORT void startMessageLoop(const char* bgColor, int fullscreen);
+EXPORT void startMessageLoop(const char* url, const char* bgColor, int fullscreen);
 
 // Register a handler for an API function. The function will be accessible to Javascript in the main frame
 // in the global CefWrapperAPI object. JS code can call the function with a function(result){ ... } callback
